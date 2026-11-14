@@ -1,9 +1,11 @@
 
 package com.devtask.backend.service;
 
+import com.devtask.backend.dto.AtualizarTarefaRequest;
 import com.devtask.backend.dto.CriarTarefaRequest;
 import com.devtask.backend.model.StatusTarefa;
 import com.devtask.backend.model.Tarefa;
+
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -50,5 +52,36 @@ public class TarefaService {
         tarefas.put(id, tarefa);
 
         return tarefa;
+    }
+
+    public Optional<Tarefa> atualizar(
+            Long id,
+            AtualizarTarefaRequest request) {
+
+        if (id == null || id <= 0) {
+            return Optional.empty();
+        }
+
+        Tarefa tarefaAtualizada = tarefas.computeIfPresent(
+                id,
+                (chave, tarefaExistente) -> new Tarefa(
+                        tarefaExistente.getId(),
+                        request.titulo().trim(),
+                        request.descricao(),
+                        request.status(),
+                        request.prioridade(),
+                        tarefaExistente.getDataCriacao()
+                )
+        );
+
+        return Optional.ofNullable(tarefaAtualizada);
+    }
+
+    public boolean excluir(Long id) {
+        if (id == null || id <= 0) {
+            return false;
+        }
+
+        return tarefas.remove(id) != null;
     }
 }
