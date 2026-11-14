@@ -5,43 +5,45 @@ import com.devtask.backend.dto.AtualizarTarefaRequest;
 import com.devtask.backend.dto.CriarTarefaRequest;
 import com.devtask.backend.model.StatusTarefa;
 import com.devtask.backend.model.Tarefa;
+import com.devtask.backend.repository.TarefaRepository;
 
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 @Service
 public class TarefaService {
 
-    private final ConcurrentHashMap<Long, Tarefa> tarefas =
-            new ConcurrentHashMap<>();
+    private final TarefaRepository tarefaRepository;
 
-    private final AtomicLong proximoId = new AtomicLong(1);
-
-    public List<Tarefa> listarTodas() {
-        return tarefas.values()
-                .stream()
-                .sorted((a, b) -> a.getId().compareTo(b.getId()))
-                .toList();
+    public TarefaService(TarefaRepository tarefaRepository) {
+        this.tarefaRepository = tarefaRepository;
     }
 
+    @Transactional(readOnly = true)
+    public List<Tarefa> listarTodas() {
+        return tarefaRepository.findAll(
+                Sort.by(Sort.Direction.ASC, "id")
+        );
+    }
+
+    @Transactional(readOnly = true)
     public Optional<Tarefa> buscarPorId(Long id) {
         if (id == null || id <= 0) {
             return Optional.empty();
         }
 
-        return Optional.ofNullable(tarefas.get(id));
+        return tarefaRepository.findById(id);
     }
 
+    @Transactional
     public Tarefa cadastrar(CriarTarefaRequest request) {
-        long id = proximoId.getAndIncrement();
-
         Tarefa tarefa = new Tarefa(
-                id,
+                null,
                 request.titulo().trim(),
                 request.descricao(),
                 StatusTarefa.PENDENTE,
@@ -49,11 +51,10 @@ public class TarefaService {
                 LocalDateTime.now()
         );
 
-        tarefas.put(id, tarefa);
-
-        return tarefa;
+        return tarefaRepository.save(tarefa);
     }
 
+    @Transactional
     public Optional<Tarefa> atualizar(
             Long id,
             AtualizarTarefaRequest request) {
@@ -62,26 +63,31 @@ public class TarefaService {
             return Optional.empty();
         }
 
-        Tarefa tarefaAtualizada = tarefas.computeIfPresent(
-                id,
-                (chave, tarefaExistente) -> new Tarefa(
-                        tarefaExistente.getId(),
-                        request.titulo().trim(),
-                        request.descricao(),
-                        request.status(),
-                        request.prioridade(),
-                        tarefaExistente.getDataCriacao()
-                )
-        );
+        return tarefaRepository.findById(id)
+                .map(tarefa -> {
+                    tarefa.setTitulo(request.titulo().trim());
+                    tarefa.setDescricao(request.descricao());
+                    tarefa.setStatus(request.status());
+                    tarefa.setPrioridade(request.prioridade());
 
-        return Optional.ofNullable(tarefaAtualizada);
+                    return tarefaRepository.save(tarefa);
+                });
     }
 
+    @Transactional
     public boolean excluir(Long id) {
         if (id == null || id <= 0) {
             return false;
         }
 
-        return tarefas.remove(id) != null;
+        Optional<Tarefa> tarefa = tarefaRepository.findById(id);
+
+        if (tarefa.isEmpty()) {
+            return false;
+        }
+
+        tarefaRepository.delete(tarefa.get());
+
+        return true;
     }
 }
