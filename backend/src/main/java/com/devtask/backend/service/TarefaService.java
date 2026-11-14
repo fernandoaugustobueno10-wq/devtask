@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -24,6 +25,14 @@ public class TarefaService {
                 .stream()
                 .sorted((a, b) -> a.getId().compareTo(b.getId()))
                 .toList();
+    }
+
+    public Optional<Tarefa> buscarPorId(Long id) {
+        if (id == null || id <= 0) {
+            return Optional.empty();
+        }
+
+        return Optional.ofNullable(tarefas.get(id));
     }
 
     public Tarefa cadastrar(CriarTarefaRequest request) {
