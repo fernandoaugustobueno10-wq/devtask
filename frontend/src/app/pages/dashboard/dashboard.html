@@ -6,6 +6,7 @@
         <span class="brand-icon">D</span>
         <span class="brand-name">DevTask</span>
       </div>
+
       <p class="brand-description">
         Gerenciamento de tarefas
       </p>
@@ -35,7 +36,9 @@
         <p class="section-eyebrow">
           PAINEL DE CONTROLE
         </p>
+
         <h1>Dashboard</h1>
+
         <p class="subtitle">
           Acompanhe suas tarefas e sua produtividade.
         </p>
@@ -146,7 +149,10 @@
     </section>
 
     @if (sucessoCadastro()) {
-      <div class="alert alert-success" role="status">
+      <div
+        class="alert alert-success"
+        role="status"
+      >
         <span aria-hidden="true">✓</span>
         <span>{{ sucessoCadastro() }}</span>
       </div>
@@ -156,6 +162,7 @@
       <div class="tasks-header">
         <div>
           <h2>Minhas tarefas</h2>
+
           <p>
             Visualize e acompanhe suas atividades.
           </p>
@@ -208,7 +215,10 @@
       </div>
 
       @if (carregando()) {
-        <div class="state-container" role="status">
+        <div
+          class="state-container"
+          role="status"
+        >
           <p>Carregando suas tarefas...</p>
         </div>
       } @else if (mensagemErro()) {
@@ -298,6 +308,18 @@
                     #{{ tarefa.id }}
                   </span>
                 </div>
+
+                <div class="task-actions">
+                  <button
+                    type="button"
+                    class="btn-secondary"
+                    [attr.aria-label]="'Editar tarefa: ' + tarefa.titulo"
+                    (click)="editarTarefa(tarefa)"
+                    [disabled]="salvandoTarefa()"
+                  >
+                    Editar
+                  </button>
+                </div>
               </div>
             </article>
           }
@@ -325,11 +347,15 @@
           </p>
 
           <h2 id="modal-nova-tarefa-titulo">
-            Nova tarefa
+            {{ tituloFormulario() }}
           </h2>
 
           <p id="modal-nova-tarefa-descricao">
-            Preencha os dados para cadastrar uma tarefa.
+            @if (modoEdicao()) {
+              Altere os dados da tarefa selecionada.
+            } @else {
+              Preencha os dados para cadastrar uma tarefa.
+            }
           </p>
         </div>
 
@@ -346,7 +372,7 @@
 
       <form
         class="task-form"
-        (ngSubmit)="salvarNovaTarefa()"
+        (ngSubmit)="salvarTarefa()"
         #formNovaTarefa="ngForm"
       >
         <div class="form-group">
@@ -380,7 +406,10 @@
           </div>
 
           @if (campoTitulo.invalid && campoTitulo.touched) {
-            <p class="field-error" role="alert">
+            <p
+              class="field-error"
+              role="alert"
+            >
               Informe o título da tarefa.
             </p>
           }
@@ -428,6 +457,35 @@
           </select>
         </div>
 
+        @if (modoEdicao()) {
+          <div class="form-group">
+            <label for="editar-tarefa-status">
+              Status
+              <span aria-hidden="true">*</span>
+            </label>
+
+            <select
+              id="editar-tarefa-status"
+              name="status"
+              [(ngModel)]="statusTarefa"
+              required
+              [disabled]="salvandoTarefa()"
+            >
+              <option value="PENDENTE">
+                Pendente
+              </option>
+
+              <option value="EM_ANDAMENTO">
+                Em andamento
+              </option>
+
+              <option value="CONCLUIDA">
+                Concluída
+              </option>
+            </select>
+          </div>
+        }
+
         @if (erroCadastro()) {
           <div
             class="alert alert-error"
@@ -454,6 +512,8 @@
           >
             @if (salvandoTarefa()) {
               Salvando...
+            } @else if (modoEdicao()) {
+              Salvar alterações
             } @else {
               Criar tarefa
             }

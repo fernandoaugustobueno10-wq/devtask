@@ -18,6 +18,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 
 import {
+  AtualizarTarefaRequest,
   CriarTarefaRequest,
   PrioridadeTarefa,
   StatusTarefa,
@@ -60,12 +61,23 @@ export class Dashboard implements OnInit {
 
   readonly exibindoFormulario = signal(false);
   readonly salvandoTarefa = signal(false);
+  readonly tarefaEmEdicaoId = signal<number | null>(null);
+
   readonly erroCadastro = signal('');
   readonly sucessoCadastro = signal('');
 
   tituloNovaTarefa = '';
   descricaoNovaTarefa = '';
   prioridadeNovaTarefa: PrioridadeTarefa = 'MEDIA';
+  statusTarefa: StatusTarefa = 'PENDENTE';
+
+  readonly modoEdicao = computed(
+    () => this.tarefaEmEdicaoId() !== null
+  );
+
+  readonly tituloFormulario = computed(
+    () => this.modoEdicao() ? 'Editar tarefa' : 'Nova tarefa'
+  );
 
   readonly totalTarefas = computed(
     () => this.tarefas().length
@@ -173,6 +185,33 @@ export class Dashboard implements OnInit {
       return;
     }
 
+    this.limparFormulario();
+    this.tarefaEmEdicaoId.set(null);
+    this.abrirModal();
+  }
+
+  editarTarefa(tarefa: Tarefa): void {
+    if (this.salvandoTarefa()) {
+      return;
+    }
+
+    if (!Number.isSafeInteger(tarefa.id) || tarefa.id <= 0) {
+      this.mensagemErro.set(
+        'Não foi possível identificar a tarefa selecionada.'
+      );
+      return;
+    }
+
+    this.tituloNovaTarefa = tarefa.titulo;
+    this.descricaoNovaTarefa = tarefa.descricao ?? '';
+    this.prioridadeNovaTarefa = tarefa.prioridade;
+    this.statusTarefa = tarefa.status;
+
+    this.tarefaEmEdicaoId.set(tarefa.id);
+    this.abrirModal();
+  }
+
+  private abrirModal(): void {
     const elementoAtivo = this.document.activeElement;
 
     this.elementoFocadoAnterior =
@@ -200,6 +239,7 @@ export class Dashboard implements OnInit {
     }
 
     this.limparFormulario();
+    this.tarefaEmEdicaoId.set(null);
     this.exibindoFormulario.set(false);
     this.restaurarFoco();
   }
@@ -265,7 +305,11 @@ export class Dashboard implements OnInit {
   }
 
   salvarNovaTarefa(): void {
-    if (this.salvandoTarefa()) {
+    this.salvarTarefa();
+  }
+
+  salvarTarefa(): void {
+    if (this.salvandoTarefa() || !this.exibindoFormulario()) {
       return;
     }
 
@@ -275,6 +319,7 @@ export class Dashboard implements OnInit {
     const titulo = this.tituloNovaTarefa.trim();
     const descricao = this.descricaoNovaTarefa.trim();
     const prioridade = this.prioridadeNovaTarefa;
+    const status = this.statusTarefa;
 
     if (titulo.length === 0 || titulo.length > 120) {
       this.erroCadastro.set(
@@ -301,6 +346,19 @@ export class Dashboard implements OnInit {
       return;
     }
 
+    if (
+      status !== 'PENDENTE' &&
+      status !== 'EM_ANDAMENTO' &&
+      status !== 'CONCLUIDA'
+    ) {
+      this.erroCadastro.set(
+        'Selecione um status válido.'
+      );
+      return;
+    }
+
+    const tarefaId = this.tarefaEmEdicaoId();
+
     const dados: CriarTarefaRequest = {
       titulo,
       descricao: descricao || null,
@@ -309,56 +367,93 @@ export class Dashboard implements OnInit {
 
     this.salvandoTarefa.set(true);
 
+    if (tarefaId !== null) {
+      const dadosAtualizados: AtualizarTarefaRequest = {
+        ...dados,
+        status
+      };
+
+      this.tarefaService.atualizar(
+        tarefaId,
+        dadosAtualizados
+      ).subscribe({
+        next: () => {
+          this.finalizarSalvamento(
+            'Tarefa atualizada com sucesso!'
+          );
+        },
+        error: (erro: unknown) => {
+          this.tratarErroSalvamento(erro);
+        }
+      });
+
+      return;
+    }
+
     this.tarefaService.criar(dados).subscribe({
       next: () => {
-        this.salvandoTarefa.set(false);
-        this.limparFormulario();
-        this.exibindoFormulario.set(false);
-        this.restaurarFoco();
-
-        this.filtroStatus.set('TODAS');
-        this.filtroPrioridade.set('TODAS');
-
-        this.sucessoCadastro.set(
+        this.finalizarSalvamento(
           'Tarefa cadastrada com sucesso!'
         );
-
-        this.carregarTarefas();
       },
-
       error: (erro: unknown) => {
-        this.salvandoTarefa.set(false);
-
-        if (erro instanceof HttpErrorResponse) {
-          if (erro.status === 400) {
-            this.erroCadastro.set(
-              'Dados inválidos. Confira os campos.'
-            );
-            return;
-          }
-
-          if (erro.status === 401 || erro.status === 403) {
-            this.erroCadastro.set(
-              'Sessão ou token de segurança inválido. ' +
-              'Faça login novamente.'
-            );
-            return;
-          }
-
-          if (erro.status === 0) {
-            this.erroCadastro.set(
-              'Não foi possível conectar ao servidor.'
-            );
-            return;
-          }
-        }
-
-        this.erroCadastro.set(
-          'Não foi possível cadastrar a tarefa. ' +
-          'Tente novamente.'
-        );
+        this.tratarErroSalvamento(erro);
       }
     });
+  }
+
+  private finalizarSalvamento(mensagem: string): void {
+    this.salvandoTarefa.set(false);
+    this.limparFormulario();
+    this.tarefaEmEdicaoId.set(null);
+    this.exibindoFormulario.set(false);
+    this.restaurarFoco();
+
+    this.filtroStatus.set('TODAS');
+    this.filtroPrioridade.set('TODAS');
+    this.sucessoCadastro.set(mensagem);
+
+    this.carregarTarefas();
+  }
+
+  private tratarErroSalvamento(erro: unknown): void {
+    this.salvandoTarefa.set(false);
+
+    if (erro instanceof HttpErrorResponse) {
+      if (erro.status === 400) {
+        this.erroCadastro.set(
+          'Dados inválidos. Confira os campos informados.'
+        );
+        return;
+      }
+
+      if (erro.status === 401 || erro.status === 403) {
+        this.erroCadastro.set(
+          'Não foi possível validar sua sessão ou ' +
+          'sua autorização. Faça login novamente.'
+        );
+        return;
+      }
+
+      if (erro.status === 404) {
+        this.erroCadastro.set(
+          'Tarefa não encontrada ou indisponível ' +
+          'para sua conta.'
+        );
+        return;
+      }
+
+      if (erro.status === 0) {
+        this.erroCadastro.set(
+          'Não foi possível conectar ao servidor.'
+        );
+        return;
+      }
+    }
+
+    this.erroCadastro.set(
+      'Não foi possível salvar a tarefa. Tente novamente.'
+    );
   }
 
   private restaurarFoco(): void {
@@ -379,6 +474,7 @@ export class Dashboard implements OnInit {
     this.tituloNovaTarefa = '';
     this.descricaoNovaTarefa = '';
     this.prioridadeNovaTarefa = 'MEDIA';
+    this.statusTarefa = 'PENDENTE';
     this.erroCadastro.set('');
   }
 
@@ -390,8 +486,12 @@ export class Dashboard implements OnInit {
       'CONCLUIDA'
     ];
 
-    if (permitidos.includes(valor as StatusTarefa | 'TODAS')) {
-      this.filtroStatus.set(valor as StatusTarefa | 'TODAS');
+    if (
+      permitidos.includes(valor as StatusTarefa | 'TODAS')
+    ) {
+      this.filtroStatus.set(
+        valor as StatusTarefa | 'TODAS'
+      );
     }
   }
 
