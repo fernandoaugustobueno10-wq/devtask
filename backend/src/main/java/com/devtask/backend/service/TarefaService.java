@@ -39,14 +39,22 @@ public class TarefaService {
     );
 
     private final TarefaRepository tarefaRepository;
+    private final UsuarioAutenticadoService usuarioAutenticadoService;
 
-    public TarefaService(TarefaRepository tarefaRepository) {
+    public TarefaService(
+            TarefaRepository tarefaRepository,
+            UsuarioAutenticadoService usuarioAutenticadoService) {
+
         this.tarefaRepository = tarefaRepository;
+        this.usuarioAutenticadoService = usuarioAutenticadoService;
     }
 
     @Transactional(readOnly = true)
     public List<Tarefa> listarTodas() {
-        return tarefaRepository.findAll(
+        Long usuarioId = usuarioAutenticadoService.obterId();
+
+        return tarefaRepository.findAllByUsuarioId(
+                usuarioId,
                 Sort.by(Sort.Direction.ASC, "id")
         );
     }
@@ -74,8 +82,8 @@ public class TarefaService {
             );
         }
 
-        if (ordenarPor == null ||
-                !CAMPOS_ORDENACAO.contains(ordenarPor)) {
+        if (ordenarPor == null
+                || !CAMPOS_ORDENACAO.contains(ordenarPor)) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Campo de ordenacao invalido."
@@ -88,6 +96,8 @@ public class TarefaService {
                     "Direcao de ordenacao invalida."
             );
         }
+
+        Long usuarioId = usuarioAutenticadoService.obterId();
 
         Sort ordenacao = Sort.by(direcao, ordenarPor);
 
@@ -106,6 +116,13 @@ public class TarefaService {
         Specification<Tarefa> filtros = (root, query, builder) -> {
             List<Predicate> condicoes = new ArrayList<>();
 
+            condicoes.add(
+                    builder.equal(
+                            root.get("usuarioId"),
+                            usuarioId
+                    )
+            );
+
             if (status != null) {
                 condicoes.add(
                         builder.equal(root.get("status"), status)
@@ -114,7 +131,10 @@ public class TarefaService {
 
             if (prioridade != null) {
                 condicoes.add(
-                        builder.equal(root.get("prioridade"), prioridade)
+                        builder.equal(
+                                root.get("prioridade"),
+                                prioridade
+                        )
                 );
             }
 
@@ -132,11 +152,18 @@ public class TarefaService {
             return Optional.empty();
         }
 
-        return tarefaRepository.findById(id);
+        Long usuarioId = usuarioAutenticadoService.obterId();
+
+        return tarefaRepository.findByIdAndUsuarioId(
+                id,
+                usuarioId
+        );
     }
 
     @Transactional
     public Tarefa cadastrar(CriarTarefaRequest request) {
+        Long usuarioId = usuarioAutenticadoService.obterId();
+
         Tarefa tarefa = new Tarefa(
                 null,
                 request.titulo().trim(),
@@ -145,6 +172,8 @@ public class TarefaService {
                 request.prioridade(),
                 LocalDateTime.now()
         );
+
+        tarefa.atribuirProprietario(usuarioId);
 
         return tarefaRepository.save(tarefa);
     }
@@ -158,7 +187,10 @@ public class TarefaService {
             return Optional.empty();
         }
 
-        return tarefaRepository.findById(id)
+        Long usuarioId = usuarioAutenticadoService.obterId();
+
+        return tarefaRepository
+                .findByIdAndUsuarioId(id, usuarioId)
                 .map(tarefa -> {
                     tarefa.setTitulo(request.titulo().trim());
                     tarefa.setDescricao(request.descricao());
@@ -175,7 +207,10 @@ public class TarefaService {
             return false;
         }
 
-        Optional<Tarefa> tarefa = tarefaRepository.findById(id);
+        Long usuarioId = usuarioAutenticadoService.obterId();
+
+        Optional<Tarefa> tarefa = tarefaRepository
+                .findByIdAndUsuarioId(id, usuarioId);
 
         if (tarefa.isEmpty()) {
             return false;

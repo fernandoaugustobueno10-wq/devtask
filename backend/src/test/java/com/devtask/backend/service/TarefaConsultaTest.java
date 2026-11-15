@@ -31,14 +31,26 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class TarefaConsultaTest {
 
+    private static final Long USUARIO_ID = 1L;
+
     @Mock
     private TarefaRepository tarefaRepository;
+
+    @Mock
+    private UsuarioAutenticadoService usuarioAutenticadoService;
 
     private TarefaService tarefaService;
 
     @BeforeEach
     void configurar() {
-        tarefaService = new TarefaService(tarefaRepository);
+        tarefaService = new TarefaService(
+                tarefaRepository,
+                usuarioAutenticadoService
+        );
+
+        lenient()
+                .when(usuarioAutenticadoService.obterId())
+                .thenReturn(USUARIO_ID);
     }
 
     @Test
@@ -51,6 +63,8 @@ class TarefaConsultaTest {
                 PrioridadeTarefa.ALTA,
                 LocalDateTime.now()
         );
+
+        tarefa.atribuirProprietario(USUARIO_ID);
 
         Page<Tarefa> pagina = new PageImpl<>(List.of(tarefa));
 
@@ -71,6 +85,8 @@ class TarefaConsultaTest {
         assertEquals(1, resultado.getTotalElements());
         assertEquals("Estudar PostgreSQL",
                 resultado.getContent().get(0).getTitulo());
+        assertEquals(USUARIO_ID,
+                resultado.getContent().get(0).getUsuarioId());
 
         ArgumentCaptor<Pageable> captor =
                 ArgumentCaptor.forClass(Pageable.class);
@@ -84,7 +100,10 @@ class TarefaConsultaTest {
 
         assertEquals(0, paginacao.getPageNumber());
         assertEquals(10, paginacao.getPageSize());
-        assertTrue(paginacao.getSort().getOrderFor("id").isAscending());
+        assertTrue(paginacao.getSort()
+                .getOrderFor("id").isAscending());
+
+        verify(usuarioAutenticadoService).obterId();
     }
 
     @Test
@@ -211,5 +230,7 @@ class TarefaConsultaTest {
 
         assertNotNull(ordem);
         assertTrue(ordem.isDescending());
+
+        verify(usuarioAutenticadoService).obterId();
     }
 }

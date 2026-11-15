@@ -30,7 +30,9 @@ public class SecurityConfig {
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
-                .formLogin(withDefaults())
+                .formLogin(form -> form
+                        .defaultSuccessUrl("/api/tarefas", true)
+                )
                 .logout(withDefaults())
                 .csrf(withDefaults());
 
