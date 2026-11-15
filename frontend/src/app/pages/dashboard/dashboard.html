@@ -48,7 +48,7 @@
         type="button"
         class="btn-primary btn-nova-tarefa"
         (click)="abrirFormulario()"
-        [disabled]="salvandoTarefa()"
+        [disabled]="salvandoTarefa() || excluindoTarefa()"
       >
         <span aria-hidden="true">+</span>
         Nova tarefa
@@ -149,10 +149,7 @@
     </section>
 
     @if (sucessoCadastro()) {
-      <div
-        class="alert alert-success"
-        role="status"
-      >
+      <div class="alert alert-success" role="status">
         <span aria-hidden="true">✓</span>
         <span>{{ sucessoCadastro() }}</span>
       </div>
@@ -162,17 +159,14 @@
       <div class="tasks-header">
         <div>
           <h2>Minhas tarefas</h2>
-
-          <p>
-            Visualize e acompanhe suas atividades.
-          </p>
+          <p>Visualize e acompanhe suas atividades.</p>
         </div>
 
         <button
           type="button"
           class="btn-secondary"
           (click)="carregarTarefas()"
-          [disabled]="carregando()"
+          [disabled]="carregando() || excluindoTarefa()"
         >
           Atualizar
         </button>
@@ -180,9 +174,7 @@
 
       <div class="filters">
         <div class="filter-group">
-          <label for="filtro-status">
-            Status
-          </label>
+          <label for="filtro-status">Status</label>
 
           <select
             id="filtro-status"
@@ -197,9 +189,7 @@
         </div>
 
         <div class="filter-group">
-          <label for="filtro-prioridade">
-            Prioridade
-          </label>
+          <label for="filtro-prioridade">Prioridade</label>
 
           <select
             id="filtro-prioridade"
@@ -215,10 +205,7 @@
       </div>
 
       @if (carregando()) {
-        <div
-          class="state-container"
-          role="status"
-        >
+        <div class="state-container" role="status">
           <p>Carregando suas tarefas...</p>
         </div>
       } @else if (mensagemErro()) {
@@ -238,10 +225,7 @@
         </div>
       } @else if (tarefasFiltradas().length === 0) {
         <div class="state-container empty-state">
-          <span
-            class="empty-icon"
-            aria-hidden="true"
-          >
+          <span class="empty-icon" aria-hidden="true">
             ☷
           </span>
 
@@ -315,9 +299,19 @@
                     class="btn-secondary"
                     [attr.aria-label]="'Editar tarefa: ' + tarefa.titulo"
                     (click)="editarTarefa(tarefa)"
-                    [disabled]="salvandoTarefa()"
+                    [disabled]="salvandoTarefa() || excluindoTarefa()"
                   >
                     Editar
+                  </button>
+
+                  <button
+                    type="button"
+                    class="btn-danger"
+                    [attr.aria-label]="'Excluir tarefa: ' + tarefa.titulo"
+                    (click)="abrirConfirmacaoExclusao(tarefa)"
+                    [disabled]="salvandoTarefa() || excluindoTarefa()"
+                  >
+                    Excluir
                   </button>
                 </div>
               </div>
@@ -406,10 +400,7 @@
           </div>
 
           @if (campoTitulo.invalid && campoTitulo.touched) {
-            <p
-              class="field-error"
-              role="alert"
-            >
+            <p class="field-error" role="alert">
               Informe o título da tarefa.
             </p>
           }
@@ -471,26 +462,15 @@
               required
               [disabled]="salvandoTarefa()"
             >
-              <option value="PENDENTE">
-                Pendente
-              </option>
-
-              <option value="EM_ANDAMENTO">
-                Em andamento
-              </option>
-
-              <option value="CONCLUIDA">
-                Concluída
-              </option>
+              <option value="PENDENTE">Pendente</option>
+              <option value="EM_ANDAMENTO">Em andamento</option>
+              <option value="CONCLUIDA">Concluída</option>
             </select>
           </div>
         }
 
         @if (erroCadastro()) {
-          <div
-            class="alert alert-error"
-            role="alert"
-          >
+          <div class="alert alert-error" role="alert">
             {{ erroCadastro() }}
           </div>
         }
@@ -520,6 +500,82 @@
           </button>
         </div>
       </form>
+    </section>
+  </div>
+}
+
+@if (tarefaParaExcluir(); as tarefa) {
+  <div class="modal-backdrop">
+    <section
+      #modalConfirmacaoExclusao
+      class="task-modal delete-modal"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="titulo-confirmacao-exclusao"
+      aria-describedby="descricao-confirmacao-exclusao"
+      tabindex="-1"
+    >
+      <div class="modal-header">
+        <div>
+          <p class="section-eyebrow">
+            CONFIRMAÇÃO DE EXCLUSÃO
+          </p>
+
+          <h2 id="titulo-confirmacao-exclusao">
+            Excluir tarefa?
+          </h2>
+        </div>
+
+        <button
+          type="button"
+          class="modal-close"
+          aria-label="Fechar confirmação"
+          (click)="cancelarExclusao()"
+          [disabled]="excluindoTarefa()"
+        >
+          ×
+        </button>
+      </div>
+
+      <p
+        id="descricao-confirmacao-exclusao"
+        class="delete-description"
+      >
+        Você está prestes a excluir permanentemente a tarefa
+        <strong>{{ tarefa.titulo }}</strong>.
+        Esta ação não poderá ser desfeita.
+      </p>
+
+      @if (erroExclusao()) {
+        <div class="alert alert-error" role="alert">
+          {{ erroExclusao() }}
+        </div>
+      }
+
+      <div class="modal-actions">
+        <button
+          #botaoCancelarExclusao
+          type="button"
+          class="btn-secondary"
+          (click)="cancelarExclusao()"
+          [disabled]="excluindoTarefa()"
+        >
+          Cancelar
+        </button>
+
+        <button
+          type="button"
+          class="btn-danger"
+          (click)="confirmarExclusao()"
+          [disabled]="excluindoTarefa()"
+        >
+          @if (excluindoTarefa()) {
+            Excluindo...
+          } @else {
+            Excluir definitivamente
+          }
+        </button>
+      </div>
     </section>
   </div>
 }

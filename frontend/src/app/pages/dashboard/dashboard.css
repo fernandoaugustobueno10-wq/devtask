@@ -68,7 +68,7 @@ select:focus-visible {
   width: 38px;
   height: 38px;
   border-radius: 11px;
-  color: white;
+  color: #fff;
   background: linear-gradient(135deg, #6366f1, #8b5cf6);
   font-size: 20px;
   font-weight: 800;
@@ -177,22 +177,29 @@ select:focus-visible {
 }
 
 .btn-primary,
-.btn-secondary {
+.btn-secondary,
+.btn-danger {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 9px;
   min-height: 42px;
   padding: 11px 19px;
+  border: 1px solid transparent;
   border-radius: 10px;
   font-size: 13px;
   font-weight: 700;
-  transition: background 0.2s, transform 0.2s;
+  line-height: 1.4;
+  text-decoration: none;
+  transition:
+    background 0.2s,
+    border-color 0.2s,
+    transform 0.2s;
 }
 
 .btn-primary {
-  border: 1px solid #6366f1;
-  color: white;
+  border-color: #6366f1;
+  color: #fff;
   background: #6366f1;
 }
 
@@ -202,13 +209,30 @@ select:focus-visible {
 }
 
 .btn-secondary {
-  border: 1px solid #344258;
+  border-color: #344258;
   color: #dbe4f0;
   background: #1b2638;
 }
 
 .btn-secondary:hover:not(:disabled) {
   background: #27364b;
+}
+
+.btn-danger {
+  border-color: #7f3640;
+  color: #fca5a5;
+  background: #48252f;
+}
+
+.btn-danger:hover:not(:disabled) {
+  border-color: #ef4444;
+  color: #fff;
+  background: #b91c1c;
+}
+
+.btn-danger:focus-visible {
+  outline: 2px solid #f87171;
+  outline-offset: 3px;
 }
 
 .btn-nova-tarefa {
@@ -476,6 +500,23 @@ select:focus-visible {
   font-size: 11px;
 }
 
+.task-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.task-actions .btn-secondary,
+.task-actions .btn-danger {
+  min-height: 38px;
+  padding: 9px 16px;
+  border-radius: 9px;
+  font-size: 13px;
+}
+
 .state-container {
   display: flex;
   flex-direction: column;
@@ -622,6 +663,26 @@ select:focus-visible {
   border-top: 1px solid #304058;
 }
 
+.delete-modal {
+  max-width: 480px;
+}
+
+.delete-description {
+  margin: 0 0 25px;
+  color: #cbd5e1;
+  font-size: 14px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.delete-description strong {
+  color: #f8fafc;
+}
+
+.delete-modal .alert-error {
+  margin-bottom: 20px;
+}
+
 @media (max-width: 1150px) {
   .stats-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -723,6 +784,13 @@ select:focus-visible {
   }
 }
 
+@media (max-width: 480px) {
+  .task-actions .btn-secondary,
+  .task-actions .btn-danger {
+    flex: 1;
+  }
+}
+
 @media (max-width: 380px) {
   .stats-grid {
     grid-template-columns: 1fr;
@@ -732,6 +800,8 @@ select:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .progress-fill,
   .btn-primary,
+  .btn-secondary,
+  .btn-danger,
   .task-card {
     transition: none;
   }

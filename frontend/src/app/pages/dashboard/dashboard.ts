@@ -40,12 +40,19 @@ export class Dashboard implements OnInit {
   private readonly document = inject(DOCUMENT);
 
   private elementoFocadoAnterior: HTMLElement | null = null;
+  private elementoFocadoExclusao: HTMLElement | null = null;
 
   @ViewChild('modalNovaTarefa')
   private modalNovaTarefa?: ElementRef<HTMLElement>;
 
   @ViewChild('campoTituloNovaTarefa')
   private campoTituloNovaTarefa?: ElementRef<HTMLInputElement>;
+
+  @ViewChild('modalConfirmacaoExclusao')
+  private modalConfirmacaoExclusao?: ElementRef<HTMLElement>;
+
+  @ViewChild('botaoCancelarExclusao')
+  private botaoCancelarExclusao?: ElementRef<HTMLButtonElement>;
 
   readonly tarefas = signal<Tarefa[]>([]);
   readonly carregando = signal(true);
@@ -65,6 +72,10 @@ export class Dashboard implements OnInit {
 
   readonly erroCadastro = signal('');
   readonly sucessoCadastro = signal('');
+
+  readonly tarefaParaExcluir = signal<Tarefa | null>(null);
+  readonly excluindoTarefa = signal(false);
+  readonly erroExclusao = signal('');
 
   tituloNovaTarefa = '';
   descricaoNovaTarefa = '';
@@ -165,23 +176,25 @@ export class Dashboard implements OnInit {
 
           if (erro.status === 0) {
             this.mensagemErro.set(
-              'Não foi possível conectar ao servidor. ' +
-              'Verifique se o backend está funcionando.'
+              'Não foi possível conectar ao servidor.'
             );
             return;
           }
         }
 
         this.mensagemErro.set(
-          'Não foi possível carregar suas tarefas. ' +
-          'Tente novamente.'
+          'Não foi possível carregar suas tarefas.'
         );
       }
     });
   }
 
   abrirFormulario(): void {
-    if (this.salvandoTarefa()) {
+    if (
+      this.salvandoTarefa() ||
+      this.excluindoTarefa() ||
+      this.tarefaParaExcluir()
+    ) {
       return;
     }
 
@@ -191,13 +204,17 @@ export class Dashboard implements OnInit {
   }
 
   editarTarefa(tarefa: Tarefa): void {
-    if (this.salvandoTarefa()) {
+    if (
+      this.salvandoTarefa() ||
+      this.excluindoTarefa() ||
+      this.tarefaParaExcluir()
+    ) {
       return;
     }
 
     if (!Number.isSafeInteger(tarefa.id) || tarefa.id <= 0) {
       this.mensagemErro.set(
-        'Não foi possível identificar a tarefa selecionada.'
+        'Não foi possível identificar a tarefa.'
       );
       return;
     }
@@ -244,8 +261,153 @@ export class Dashboard implements OnInit {
     this.restaurarFoco();
   }
 
+  abrirConfirmacaoExclusao(tarefa: Tarefa): void {
+    if (
+      this.exibindoFormulario() ||
+      this.salvandoTarefa() ||
+      this.excluindoTarefa() ||
+      this.tarefaParaExcluir()
+    ) {
+      return;
+    }
+
+    if (
+      !Number.isSafeInteger(tarefa.id) ||
+      tarefa.id <= 0
+    ) {
+      this.mensagemErro.set(
+        'Não foi possível identificar a tarefa.'
+      );
+      return;
+    }
+
+    const elementoAtivo = this.document.activeElement;
+
+    this.elementoFocadoExclusao =
+      elementoAtivo instanceof HTMLElement
+        ? elementoAtivo
+        : null;
+
+    this.erroExclusao.set('');
+    this.sucessoCadastro.set('');
+
+    this.tarefaParaExcluir.set(tarefa);
+
+    afterNextRender(
+      () => {
+        if (this.tarefaParaExcluir()) {
+          this.botaoCancelarExclusao?.nativeElement.focus();
+        }
+      },
+      { injector: this.injector }
+    );
+  }
+
+  cancelarExclusao(): void {
+    if (this.excluindoTarefa()) {
+      return;
+    }
+
+    this.tarefaParaExcluir.set(null);
+    this.erroExclusao.set('');
+    this.restaurarFocoExclusao();
+  }
+
+  confirmarExclusao(): void {
+    const tarefa = this.tarefaParaExcluir();
+
+    if (!tarefa || this.excluindoTarefa()) {
+      return;
+    }
+
+    this.erroExclusao.set('');
+    this.excluindoTarefa.set(true);
+
+    this.tarefaService.excluir(tarefa.id).subscribe({
+      next: () => {
+        this.excluindoTarefa.set(false);
+        this.tarefaParaExcluir.set(null);
+        this.erroExclusao.set('');
+
+        this.tarefas.update((tarefas) =>
+          tarefas.filter((item) => item.id !== tarefa.id)
+        );
+
+        this.sucessoCadastro.set(
+          'Tarefa excluída com sucesso!'
+        );
+
+        this.restaurarFocoExclusao();
+        this.carregarTarefas();
+      },
+
+      error: (erro: unknown) => {
+        this.excluindoTarefa.set(false);
+
+        if (erro instanceof HttpErrorResponse) {
+          if (erro.status === 401 || erro.status === 403) {
+            this.erroExclusao.set(
+              'Sessão expirada ou operação não autorizada. ' +
+              'Faça login novamente.'
+            );
+            return;
+          }
+
+          if (erro.status === 404) {
+            this.erroExclusao.set(
+              'A tarefa não foi encontrada ou não pertence à sua conta.'
+            );
+            return;
+          }
+
+          if (erro.status === 0) {
+            this.erroExclusao.set(
+              'Não foi possível conectar ao servidor.'
+            );
+            return;
+          }
+        }
+
+        this.erroExclusao.set(
+          'Não foi possível excluir a tarefa. Tente novamente.'
+        );
+      }
+    });
+  }
+
+  private restaurarFocoExclusao(): void {
+    const elemento = this.elementoFocadoExclusao;
+    this.elementoFocadoExclusao = null;
+
+    afterNextRender(
+      () => {
+        if (elemento?.isConnected) {
+          elemento.focus();
+        }
+      },
+      { injector: this.injector }
+    );
+  }
+
   @HostListener('document:keydown', ['$event'])
   aoPressionarTecla(evento: KeyboardEvent): void {
+    if (this.tarefaParaExcluir()) {
+      if (evento.key === 'Escape') {
+        evento.preventDefault();
+        this.cancelarExclusao();
+        return;
+      }
+
+      if (evento.key === 'Tab') {
+        this.controlarFoco(
+          evento,
+          this.modalConfirmacaoExclusao?.nativeElement
+        );
+      }
+
+      return;
+    }
+
     if (!this.exibindoFormulario()) {
       return;
     }
@@ -256,12 +418,18 @@ export class Dashboard implements OnInit {
       return;
     }
 
-    if (evento.key !== 'Tab') {
-      return;
+    if (evento.key === 'Tab') {
+      this.controlarFoco(
+        evento,
+        this.modalNovaTarefa?.nativeElement
+      );
     }
+  }
 
-    const modal = this.modalNovaTarefa?.nativeElement;
-
+  private controlarFoco(
+    evento: KeyboardEvent,
+    modal: HTMLElement | undefined
+  ): void {
     if (!modal) {
       return;
     }
@@ -309,7 +477,10 @@ export class Dashboard implements OnInit {
   }
 
   salvarTarefa(): void {
-    if (this.salvandoTarefa() || !this.exibindoFormulario()) {
+    if (
+      this.salvandoTarefa() ||
+      !this.exibindoFormulario()
+    ) {
       return;
     }
 
@@ -437,8 +608,7 @@ export class Dashboard implements OnInit {
 
       if (erro.status === 404) {
         this.erroCadastro.set(
-          'Tarefa não encontrada ou indisponível ' +
-          'para sua conta.'
+          'Tarefa não encontrada ou indisponível para sua conta.'
         );
         return;
       }
