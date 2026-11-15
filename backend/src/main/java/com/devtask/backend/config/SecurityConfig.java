@@ -22,7 +22,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(
                                 HttpMethod.GET,
-                                "/api/auth/csrf"
+                                "/api/auth/csrf",
+                                "/api/auth/sessao"
                         ).permitAll()
                         .requestMatchers(
                                 HttpMethod.POST,

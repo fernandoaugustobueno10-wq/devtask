@@ -1,5 +1,6 @@
 
 import { Injectable, inject } from '@angular/core';
+
 import {
   HttpClient,
   HttpHeaders,
@@ -18,6 +19,10 @@ interface CsrfResponse {
   token: string;
 }
 
+export interface SessaoResponse {
+  autenticado: boolean;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -25,9 +30,12 @@ export class AuthService {
   private readonly http = inject(HttpClient);
 
   private obterCsrf(): Observable<CsrfResponse> {
-    return this.http.get<CsrfResponse>('/api/auth/csrf', {
-      withCredentials: true
-    }).pipe(
+    return this.http.get<CsrfResponse>(
+      '/api/auth/csrf',
+      {
+        withCredentials: true
+      }
+    ).pipe(
       switchMap((csrf) => {
         if (
           csrf.headerName !== 'X-CSRF-TOKEN' &&
@@ -49,6 +57,17 @@ export class AuthService {
 
         return [csrf];
       })
+    );
+  }
+
+  verificarSessao(): Observable<boolean> {
+    return this.http.get<SessaoResponse>(
+      '/api/auth/sessao',
+      {
+        withCredentials: true
+      }
+    ).pipe(
+      map((resposta) => resposta.autenticado === true)
     );
   }
 

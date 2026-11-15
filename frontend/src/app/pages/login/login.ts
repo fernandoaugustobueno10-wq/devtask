@@ -2,7 +2,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 
 import { AuthService } from '../../services/auth.service';
@@ -519,6 +519,7 @@ import { AuthService } from '../../services/auth.service';
 })
 export class Login {
   private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
 
   email = '';
   senha = '';
@@ -561,10 +562,20 @@ export class Login {
         next: () => {
           this.senha = '';
 
-          this.mensagemSucesso.set(
-            'Login realizado com sucesso! Sua sessão está ativa. ' +
-            'O painel de tarefas será disponibilizado em breve.'
-          );
+          void this.router.navigate(['/dashboard']).then(
+            (navegou) => {
+              if (!navegou) {
+                this.mensagemErro.set(
+                  'Login realizado, mas não foi possível abrir o painel. ' +
+                  'Tente acessar o dashboard novamente.'
+                );
+              }
+            }
+          ).catch(() => {
+            this.mensagemErro.set(
+              'Não foi possível abrir o painel. Tente novamente.'
+            );
+          });
         },
         error: (erro: unknown) => {
           this.senha = '';
