@@ -1,6 +1,7 @@
 
 package com.devtask.backend.service;
 
+import com.devtask.backend.dto.AtualizarTarefaRequest;
 import com.devtask.backend.dto.CriarTarefaRequest;
 import com.devtask.backend.model.PrioridadeTarefa;
 import com.devtask.backend.model.StatusTarefa;
@@ -61,14 +62,7 @@ class TarefaServiceTest {
 
     @Test
     void deveBuscarTarefaExistente() {
-        Tarefa tarefa = new Tarefa(
-                1L,
-                "Estudar Java",
-                "Revisar Spring Boot",
-                StatusTarefa.PENDENTE,
-                PrioridadeTarefa.MEDIA,
-                LocalDateTime.now()
-        );
+        Tarefa tarefa = criarTarefa();
 
         when(tarefaRepository.findById(1L))
                 .thenReturn(Optional.of(tarefa));
@@ -100,5 +94,127 @@ class TarefaServiceTest {
         assertTrue(resultado.isEmpty());
 
         verifyNoInteractions(tarefaRepository);
+    }
+
+    @Test
+    void deveAtualizarTarefaExistente() {
+        Tarefa tarefa = criarTarefa();
+
+        AtualizarTarefaRequest request = new AtualizarTarefaRequest(
+                "Estudar Spring Boot",
+                "Revisar API REST",
+                StatusTarefa.EM_ANDAMENTO,
+                PrioridadeTarefa.ALTA
+        );
+
+        when(tarefaRepository.findById(1L))
+                .thenReturn(Optional.of(tarefa));
+
+        when(tarefaRepository.save(any(Tarefa.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        Optional<Tarefa> resultado = tarefaService.atualizar(
+                1L,
+                request
+        );
+
+        assertTrue(resultado.isPresent());
+        assertEquals("Estudar Spring Boot", resultado.get().getTitulo());
+        assertEquals("Revisar API REST", resultado.get().getDescricao());
+        assertEquals(StatusTarefa.EM_ANDAMENTO, resultado.get().getStatus());
+        assertEquals(PrioridadeTarefa.ALTA, resultado.get().getPrioridade());
+
+        verify(tarefaRepository).findById(1L);
+        verify(tarefaRepository).save(tarefa);
+    }
+
+    @Test
+    void naoDeveAtualizarTarefaInexistente() {
+        AtualizarTarefaRequest request = new AtualizarTarefaRequest(
+                "Nova tarefa",
+                "Descricao",
+                StatusTarefa.PENDENTE,
+                PrioridadeTarefa.MEDIA
+        );
+
+        when(tarefaRepository.findById(999L))
+                .thenReturn(Optional.empty());
+
+        Optional<Tarefa> resultado = tarefaService.atualizar(
+                999L,
+                request
+        );
+
+        assertTrue(resultado.isEmpty());
+
+        verify(tarefaRepository).findById(999L);
+        verify(tarefaRepository, never()).save(any(Tarefa.class));
+    }
+
+    @Test
+    void naoDeveAtualizarComIdInvalido() {
+        AtualizarTarefaRequest request = new AtualizarTarefaRequest(
+                "Nova tarefa",
+                "Descricao",
+                StatusTarefa.PENDENTE,
+                PrioridadeTarefa.MEDIA
+        );
+
+        Optional<Tarefa> resultado = tarefaService.atualizar(
+                -1L,
+                request
+        );
+
+        assertTrue(resultado.isEmpty());
+
+        verifyNoInteractions(tarefaRepository);
+    }
+
+    @Test
+    void deveExcluirTarefaExistente() {
+        Tarefa tarefa = criarTarefa();
+
+        when(tarefaRepository.findById(1L))
+                .thenReturn(Optional.of(tarefa));
+
+        boolean resultado = tarefaService.excluir(1L);
+
+        assertTrue(resultado);
+
+        verify(tarefaRepository).findById(1L);
+        verify(tarefaRepository).delete(tarefa);
+    }
+
+    @Test
+    void naoDeveExcluirTarefaInexistente() {
+        when(tarefaRepository.findById(999L))
+                .thenReturn(Optional.empty());
+
+        boolean resultado = tarefaService.excluir(999L);
+
+        assertFalse(resultado);
+
+        verify(tarefaRepository).findById(999L);
+        verify(tarefaRepository, never()).delete(any(Tarefa.class));
+    }
+
+    @Test
+    void naoDeveExcluirComIdInvalido() {
+        boolean resultado = tarefaService.excluir(-1L);
+
+        assertFalse(resultado);
+
+        verifyNoInteractions(tarefaRepository);
+    }
+
+    private Tarefa criarTarefa() {
+        return new Tarefa(
+                1L,
+                "Estudar Java",
+                "Revisar Spring Boot",
+                StatusTarefa.PENDENTE,
+                PrioridadeTarefa.MEDIA,
+                LocalDateTime.now()
+        );
     }
 }

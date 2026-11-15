@@ -3,11 +3,15 @@ package com.devtask.backend.controller;
 
 import com.devtask.backend.dto.AtualizarTarefaRequest;
 import com.devtask.backend.dto.CriarTarefaRequest;
+import com.devtask.backend.model.PrioridadeTarefa;
+import com.devtask.backend.model.StatusTarefa;
 import com.devtask.backend.model.Tarefa;
 import com.devtask.backend.service.TarefaService;
 
 import jakarta.validation.Valid;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -17,6 +21,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -35,6 +40,36 @@ public class TarefaController {
     @GetMapping
     public List<Tarefa> listarTarefas() {
         return tarefaService.listarTodas();
+    }
+
+    @GetMapping("/consulta")
+    public Page<Tarefa> consultarTarefas(
+            @RequestParam(required = false)
+            StatusTarefa status,
+
+            @RequestParam(required = false)
+            PrioridadeTarefa prioridade,
+
+            @RequestParam(defaultValue = "0")
+            int page,
+
+            @RequestParam(defaultValue = "10")
+            int size,
+
+            @RequestParam(defaultValue = "id")
+            String ordenarPor,
+
+            @RequestParam(defaultValue = "ASC")
+            Sort.Direction direcao) {
+
+        return tarefaService.consultar(
+                status,
+                prioridade,
+                page,
+                size,
+                ordenarPor,
+                direcao
+        );
     }
 
     @GetMapping("/{id}")
