@@ -38,8 +38,7 @@ public class GlobalExceptionHandler {
                 campos
         );
 
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(resposta);
     }
 
@@ -55,8 +54,39 @@ public class GlobalExceptionHandler {
                 Map.of()
         );
 
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(resposta);
+    }
+
+    @ExceptionHandler(EmailJaCadastradoException.class)
+    public ResponseEntity<RespostaErro> tratarEmailDuplicado(
+            EmailJaCadastradoException exception) {
+
+        RespostaErro resposta = new RespostaErro(
+                LocalDateTime.now(),
+                HttpStatus.CONFLICT.value(),
+                "Conflito de cadastro",
+                "Este email ja esta cadastrado.",
+                Map.of()
+        );
+
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(resposta);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<RespostaErro> tratarArgumentoInvalido(
+            IllegalArgumentException exception) {
+
+        RespostaErro resposta = new RespostaErro(
+                LocalDateTime.now(),
+                HttpStatus.BAD_REQUEST.value(),
+                "Dados invalidos",
+                "Verifique os dados informados.",
+                Map.of()
+        );
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(resposta);
     }
 
