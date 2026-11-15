@@ -36,26 +36,33 @@ export class AuthService {
         withCredentials: true
       }
     ).pipe(
-      switchMap((csrf) => {
+      map((csrf) => {
         if (
           csrf.headerName !== 'X-CSRF-TOKEN' &&
           csrf.headerName !== 'X-XSRF-TOKEN'
         ) {
-          return throwError(
-            () => new Error('Cabeçalho CSRF inválido.')
-          );
+          throw new Error('Cabeçalho CSRF inválido.');
         }
 
         if (
           typeof csrf.token !== 'string' ||
           csrf.token.length === 0
         ) {
-          return throwError(
-            () => new Error('Token CSRF inválido.')
-          );
+          throw new Error('Token CSRF inválido.');
         }
 
-        return [csrf];
+        return csrf;
+      })
+    );
+  }
+
+  obterCabecalhosCsrf(): Observable<HttpHeaders> {
+    return this.obterCsrf().pipe(
+      map((csrf) => {
+        return new HttpHeaders().set(
+          csrf.headerName,
+          csrf.token
+        );
       })
     );
   }
@@ -88,11 +95,12 @@ export class AuthService {
       .set('username', emailNormalizado)
       .set('password', senha);
 
-    return this.obterCsrf().pipe(
-      switchMap((csrf) => {
-        const headers = new HttpHeaders({
-          'Content-Type': 'application/x-www-form-urlencoded'
-        }).set(csrf.headerName, csrf.token);
+    return this.obterCabecalhosCsrf().pipe(
+      switchMap((csrfHeaders) => {
+        const headers = csrfHeaders.set(
+          'Content-Type',
+          'application/x-www-form-urlencoded'
+        );
 
         return this.http.post<void>(
           '/api/auth/login',

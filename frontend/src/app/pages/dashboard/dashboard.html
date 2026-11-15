@@ -1,113 +1,130 @@
 
-<div class="dashboard">
+<div class="dashboard-layout">
   <aside class="sidebar">
-    <div class="brand">
-      <span class="brand-icon" aria-hidden="true">✓</span>
-      <span>DevTask</span>
+    <div class="sidebar-header">
+      <div class="brand">
+        <span class="brand-icon">D</span>
+        <span class="brand-name">DevTask</span>
+      </div>
+      <p class="brand-description">
+        Gerenciamento de tarefas
+      </p>
     </div>
 
-    <nav class="navigation" aria-label="Menu principal">
-      <span class="navigation-label">MENU PRINCIPAL</span>
-
-      <div class="navigation-item active" aria-current="page">
-        <span aria-hidden="true">▦</span>
-        <span>Visão geral</span>
+    <nav class="sidebar-nav" aria-label="Menu principal">
+      <div class="nav-item active" aria-current="page">
+        <span class="nav-icon">▦</span>
+        <span>Dashboard</span>
       </div>
 
-      <div class="navigation-item">
-        <span aria-hidden="true">☑</span>
+      <div class="nav-item">
+        <span class="nav-icon">☷</span>
         <span>Minhas tarefas</span>
       </div>
     </nav>
 
     <div class="sidebar-footer">
-      <span>DevTask</span>
-      <small>Seu espaço de produtividade</small>
+      <p>Organize suas tarefas.</p>
+      <p>Acompanhe seu progresso.</p>
     </div>
   </aside>
 
   <main class="main-content">
     <header class="topbar">
-      <div>
-        <span class="eyebrow">ÁREA DE TRABALHO</span>
-
-        <h1>Visão geral</h1>
-
-        <p>
-          Organize suas tarefas e acompanhe suas atividades.
+      <div class="topbar-title">
+        <p class="section-eyebrow">
+          PAINEL DE CONTROLE
+        </p>
+        <h1>Dashboard</h1>
+        <p class="subtitle">
+          Acompanhe suas tarefas e sua produtividade.
         </p>
       </div>
 
-      <div class="profile">
-        <div class="avatar" aria-hidden="true">D</div>
-        <span>Minha conta</span>
-      </div>
+      <button
+        type="button"
+        class="btn-primary btn-nova-tarefa"
+        (click)="abrirFormulario()"
+        [disabled]="salvandoTarefa()"
+      >
+        <span aria-hidden="true">+</span>
+        Nova tarefa
+      </button>
     </header>
 
-    <section class="welcome">
-      <span class="welcome-label">
-        BEM-VINDO AO DEVTASK
-      </span>
-
-      <h2>Seu trabalho, mais organizado.</h2>
-
-      <p>
-        Acompanhe suas tarefas, visualize suas prioridades
-        e mantenha o controle sobre suas atividades.
-      </p>
-    </section>
-
-    <section class="statistics" aria-label="Estatísticas das tarefas">
-      <div class="stat-card">
+    <section
+      class="stats-grid"
+      aria-label="Indicadores de tarefas"
+    >
+      <article class="stat-card">
         <div class="stat-header">
           <span>Total de tarefas</span>
-          <span class="stat-icon total" aria-hidden="true">▦</span>
+          <span class="stat-icon">☷</span>
         </div>
 
-        <strong>{{ totalTarefas() }}</strong>
+        <div class="stat-value">
+          {{ totalTarefas() }}
+        </div>
 
-        <small>Tarefas cadastradas</small>
-      </div>
+        <p class="stat-description">
+          Tarefas cadastradas
+        </p>
+      </article>
 
-      <div class="stat-card">
+      <article class="stat-card">
         <div class="stat-header">
           <span>Pendentes</span>
-          <span class="stat-icon pending" aria-hidden="true">◷</span>
+          <span class="stat-icon">◷</span>
         </div>
 
-        <strong>{{ totalPendentes() }}</strong>
+        <div class="stat-value">
+          {{ totalPendentes() }}
+        </div>
 
-        <small>Aguardando início</small>
-      </div>
+        <p class="stat-description">
+          Aguardando início
+        </p>
+      </article>
 
-      <div class="stat-card">
+      <article class="stat-card">
         <div class="stat-header">
           <span>Em andamento</span>
-          <span class="stat-icon progress" aria-hidden="true">↻</span>
+          <span class="stat-icon">↗</span>
         </div>
 
-        <strong>{{ totalEmAndamento() }}</strong>
+        <div class="stat-value">
+          {{ totalEmAndamento() }}
+        </div>
 
-        <small>Em desenvolvimento</small>
-      </div>
+        <p class="stat-description">
+          Tarefas em execução
+        </p>
+      </article>
 
-      <div class="stat-card">
+      <article class="stat-card">
         <div class="stat-header">
           <span>Concluídas</span>
-          <span class="stat-icon done" aria-hidden="true">✓</span>
+          <span class="stat-icon">✓</span>
         </div>
 
-        <strong>{{ totalConcluidas() }}</strong>
+        <div class="stat-value">
+          {{ totalConcluidas() }}
+        </div>
 
-        <small>Atividades finalizadas</small>
-      </div>
+        <p class="stat-description">
+          Tarefas finalizadas
+        </p>
+      </article>
     </section>
 
-    <section class="progress-section">
+    <section
+      class="progress-card"
+      aria-label="Progresso das tarefas"
+    >
       <div class="progress-header">
         <div>
-          <h2>Seu progresso</h2>
-          <p>Percentual de tarefas concluídas</p>
+          <h2>Progresso geral</h2>
+          <p>Seu desempenho nas tarefas cadastradas</p>
         </div>
 
         <strong>{{ percentualConclusao() }}%</strong>
@@ -116,10 +133,10 @@
       <div
         class="progress-track"
         role="progressbar"
+        aria-label="Percentual de tarefas concluídas"
         [attr.aria-valuenow]="percentualConclusao()"
         aria-valuemin="0"
         aria-valuemax="100"
-        aria-label="Progresso das tarefas concluídas"
       >
         <div
           class="progress-fill"
@@ -128,36 +145,44 @@
       </div>
     </section>
 
-    <section class="content-section" aria-labelledby="tasks-title">
-      <div class="section-heading">
+    @if (sucessoCadastro()) {
+      <div class="alert alert-success" role="status">
+        <span aria-hidden="true">✓</span>
+        <span>{{ sucessoCadastro() }}</span>
+      </div>
+    }
+
+    <section class="tasks-section">
+      <div class="tasks-header">
         <div>
-          <h2 id="tasks-title">Minhas tarefas</h2>
+          <h2>Minhas tarefas</h2>
           <p>
-            Consulte suas atividades e acompanhe suas prioridades.
+            Visualize e acompanhe suas atividades.
           </p>
         </div>
 
         <button
           type="button"
-          class="refresh-button"
+          class="btn-secondary"
           (click)="carregarTarefas()"
           [disabled]="carregando()"
         >
-          <span aria-hidden="true">↻</span>
           Atualizar
         </button>
       </div>
 
       <div class="filters">
         <div class="filter-group">
-          <label for="filtro-status">Status</label>
+          <label for="filtro-status">
+            Status
+          </label>
 
           <select
             id="filtro-status"
             [value]="filtroStatus()"
             (change)="alterarFiltroStatus($any($event.target).value)"
           >
-            <option value="TODAS">Todos os status</option>
+            <option value="TODAS">Todas</option>
             <option value="PENDENTE">Pendente</option>
             <option value="EM_ANDAMENTO">Em andamento</option>
             <option value="CONCLUIDA">Concluída</option>
@@ -165,121 +190,112 @@
         </div>
 
         <div class="filter-group">
-          <label for="filtro-prioridade">Prioridade</label>
+          <label for="filtro-prioridade">
+            Prioridade
+          </label>
 
           <select
             id="filtro-prioridade"
             [value]="filtroPrioridade()"
             (change)="alterarFiltroPrioridade($any($event.target).value)"
           >
-            <option value="TODAS">Todas as prioridades</option>
+            <option value="TODAS">Todas</option>
             <option value="BAIXA">Baixa</option>
             <option value="MEDIA">Média</option>
             <option value="ALTA">Alta</option>
           </select>
         </div>
-
-        <div class="filter-summary">
-          @if (!carregando() && !mensagemErro()) {
-            {{ tarefasFiltradas().length }}
-            de
-            {{ totalTarefas() }}
-            tarefas
-          }
-        </div>
       </div>
 
       @if (carregando()) {
-        <div class="empty-state" role="status">
-          <div class="loading-spinner" aria-hidden="true"></div>
-
-          <h3>Carregando tarefas...</h3>
-
-          <p>
-            Estamos consultando suas atividades no servidor.
-          </p>
+        <div class="state-container" role="status">
+          <p>Carregando suas tarefas...</p>
         </div>
       } @else if (mensagemErro()) {
-        <div class="empty-state error-state" role="alert">
-          <div class="empty-icon error-icon" aria-hidden="true">
-            !
-          </div>
-
-          <h3>Não foi possível carregar as tarefas</h3>
-
+        <div
+          class="state-container error-state"
+          role="alert"
+        >
           <p>{{ mensagemErro() }}</p>
 
           <button
             type="button"
-            class="retry-button"
+            class="btn-secondary"
             (click)="carregarTarefas()"
           >
             Tentar novamente
           </button>
         </div>
-      } @else if (totalTarefas() === 0) {
-        <div class="empty-state">
-          <div class="empty-icon" aria-hidden="true">☑</div>
-
-          <h3>Nenhuma tarefa cadastrada</h3>
-
-          <p>
-            Você ainda não possui tarefas cadastradas.
-            Quando adicionar uma tarefa, ela aparecerá aqui.
-          </p>
-        </div>
       } @else if (tarefasFiltradas().length === 0) {
-        <div class="empty-state">
-          <div class="empty-icon" aria-hidden="true">⌕</div>
+        <div class="state-container empty-state">
+          <span
+            class="empty-icon"
+            aria-hidden="true"
+          >
+            ☷
+          </span>
 
           <h3>Nenhuma tarefa encontrada</h3>
 
           <p>
-            Não existem tarefas que correspondam
-            aos filtros selecionados.
+            @if (totalTarefas() === 0) {
+              Você ainda não cadastrou nenhuma tarefa.
+            } @else {
+              Nenhuma tarefa corresponde aos filtros selecionados.
+            }
           </p>
+
+          @if (totalTarefas() === 0) {
+            <button
+              type="button"
+              class="btn-primary"
+              (click)="abrirFormulario()"
+            >
+              Criar primeira tarefa
+            </button>
+          }
         </div>
       } @else {
-        <div class="task-list">
+        <div class="tasks-list">
           @for (tarefa of tarefasFiltradas(); track tarefa.id) {
             <article class="task-card">
               <div class="task-content">
-                <div class="task-top">
-                  <span class="task-id">
-                    Tarefa #{{ tarefa.id }}
-                  </span>
+                <div class="task-heading">
+                  <h3>{{ tarefa.titulo }}</h3>
 
                   <span
                     class="status-badge"
-                    [class.status-pending]="tarefa.status === 'PENDENTE'"
-                    [class.status-progress]="tarefa.status === 'EM_ANDAMENTO'"
-                    [class.status-done]="tarefa.status === 'CONCLUIDA'"
+                    [class.status-pendente]="tarefa.status === 'PENDENTE'"
+                    [class.status-andamento]="tarefa.status === 'EM_ANDAMENTO'"
+                    [class.status-concluida]="tarefa.status === 'CONCLUIDA'"
                   >
                     {{ nomeStatus(tarefa.status) }}
                   </span>
                 </div>
-
-                <h3>{{ tarefa.titulo }}</h3>
 
                 @if (tarefa.descricao) {
                   <p class="task-description">
                     {{ tarefa.descricao }}
                   </p>
                 } @else {
-                  <p class="task-description no-description">
+                  <p class="task-description">
                     Sem descrição.
                   </p>
                 }
 
-                <div class="task-footer">
+                <div class="task-meta">
                   <span
                     class="priority-badge"
-                    [class.priority-low]="tarefa.prioridade === 'BAIXA'"
-                    [class.priority-medium]="tarefa.prioridade === 'MEDIA'"
-                    [class.priority-high]="tarefa.prioridade === 'ALTA'"
+                    [class.priority-baixa]="tarefa.prioridade === 'BAIXA'"
+                    [class.priority-media]="tarefa.prioridade === 'MEDIA'"
+                    [class.priority-alta]="tarefa.prioridade === 'ALTA'"
                   >
-                    <span class="priority-dot" aria-hidden="true"></span>
-                    Prioridade {{ nomePrioridade(tarefa.prioridade) }}
+                    Prioridade
+                    {{ nomePrioridade(tarefa.prioridade) }}
+                  </span>
+
+                  <span class="task-id">
+                    #{{ tarefa.id }}
                   </span>
                 </div>
               </div>
@@ -290,3 +306,160 @@
     </section>
   </main>
 </div>
+
+@if (exibindoFormulario()) {
+  <div class="modal-backdrop">
+    <section
+      #modalNovaTarefa
+      class="task-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-nova-tarefa-titulo"
+      aria-describedby="modal-nova-tarefa-descricao"
+      tabindex="-1"
+    >
+      <div class="modal-header">
+        <div>
+          <p class="section-eyebrow">
+            GERENCIAMENTO DE TAREFAS
+          </p>
+
+          <h2 id="modal-nova-tarefa-titulo">
+            Nova tarefa
+          </h2>
+
+          <p id="modal-nova-tarefa-descricao">
+            Preencha os dados para cadastrar uma tarefa.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          class="modal-close"
+          aria-label="Fechar formulário"
+          (click)="fecharFormulario()"
+          [disabled]="salvandoTarefa()"
+        >
+          ×
+        </button>
+      </div>
+
+      <form
+        class="task-form"
+        (ngSubmit)="salvarNovaTarefa()"
+        #formNovaTarefa="ngForm"
+      >
+        <div class="form-group">
+          <label for="nova-tarefa-titulo">
+            Título
+            <span aria-hidden="true">*</span>
+          </label>
+
+          <input
+            #campoTituloNovaTarefa
+            id="nova-tarefa-titulo"
+            name="titulo"
+            type="text"
+            placeholder="Ex.: Finalizar documentação do projeto"
+            [(ngModel)]="tituloNovaTarefa"
+            #campoTitulo="ngModel"
+            required
+            maxlength="120"
+            autocomplete="off"
+            [disabled]="salvandoTarefa()"
+            [attr.aria-invalid]="campoTitulo.invalid && campoTitulo.touched"
+            aria-describedby="nova-tarefa-titulo-info"
+          />
+
+          <div
+            class="field-info"
+            id="nova-tarefa-titulo-info"
+          >
+            <span>Campo obrigatório</span>
+            <span>{{ tituloNovaTarefa.length }}/120</span>
+          </div>
+
+          @if (campoTitulo.invalid && campoTitulo.touched) {
+            <p class="field-error" role="alert">
+              Informe o título da tarefa.
+            </p>
+          }
+        </div>
+
+        <div class="form-group">
+          <label for="nova-tarefa-descricao">
+            Descrição
+          </label>
+
+          <textarea
+            id="nova-tarefa-descricao"
+            name="descricao"
+            rows="4"
+            maxlength="2000"
+            placeholder="Descreva o que precisa ser feito..."
+            [(ngModel)]="descricaoNovaTarefa"
+            [disabled]="salvandoTarefa()"
+          ></textarea>
+
+          <div class="field-info">
+            <span>Opcional</span>
+            <span>
+              {{ descricaoNovaTarefa.length }}/2000
+            </span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="nova-tarefa-prioridade">
+            Prioridade
+            <span aria-hidden="true">*</span>
+          </label>
+
+          <select
+            id="nova-tarefa-prioridade"
+            name="prioridade"
+            [(ngModel)]="prioridadeNovaTarefa"
+            required
+            [disabled]="salvandoTarefa()"
+          >
+            <option value="BAIXA">Baixa</option>
+            <option value="MEDIA">Média</option>
+            <option value="ALTA">Alta</option>
+          </select>
+        </div>
+
+        @if (erroCadastro()) {
+          <div
+            class="alert alert-error"
+            role="alert"
+          >
+            {{ erroCadastro() }}
+          </div>
+        }
+
+        <div class="modal-actions">
+          <button
+            type="button"
+            class="btn-secondary"
+            (click)="fecharFormulario()"
+            [disabled]="salvandoTarefa()"
+          >
+            Cancelar
+          </button>
+
+          <button
+            type="submit"
+            class="btn-primary"
+            [disabled]="formNovaTarefa.invalid || salvandoTarefa()"
+          >
+            @if (salvandoTarefa()) {
+              Salvando...
+            } @else {
+              Criar tarefa
+            }
+          </button>
+        </div>
+      </form>
+    </section>
+  </div>
+}

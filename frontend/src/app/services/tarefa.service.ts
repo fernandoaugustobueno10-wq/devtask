@@ -6,7 +6,9 @@ import {
   HttpParams
 } from '@angular/common/http';
 
-import { Observable } from 'rxjs';
+import { Observable, switchMap } from 'rxjs';
+
+import { AuthService } from './auth.service';
 
 export type StatusTarefa =
   | 'PENDENTE'
@@ -66,6 +68,7 @@ export interface FiltroTarefas {
 })
 export class TarefaService {
   private readonly http = inject(HttpClient);
+  private readonly authService = inject(AuthService);
 
   private readonly apiUrl = '/api/tarefas';
 
@@ -90,11 +93,17 @@ export class TarefaService {
     }
 
     if (filtros.page !== undefined) {
-      if (!Number.isSafeInteger(filtros.page) || filtros.page < 0) {
+      if (
+        !Number.isSafeInteger(filtros.page) ||
+        filtros.page < 0
+      ) {
         throw new RangeError('Número de página inválido.');
       }
 
-      params = params.set('page', filtros.page.toString());
+      params = params.set(
+        'page',
+        filtros.page.toString()
+      );
     }
 
     if (filtros.size !== undefined) {
@@ -108,15 +117,24 @@ export class TarefaService {
         );
       }
 
-      params = params.set('size', filtros.size.toString());
+      params = params.set(
+        'size',
+        filtros.size.toString()
+      );
     }
 
     if (filtros.ordenarPor) {
-      params = params.set('ordenarPor', filtros.ordenarPor);
+      params = params.set(
+        'ordenarPor',
+        filtros.ordenarPor
+      );
     }
 
     if (filtros.direcao) {
-      params = params.set('direcao', filtros.direcao);
+      params = params.set(
+        'direcao',
+        filtros.direcao
+      );
     }
 
     return this.http.get<PaginaTarefas>(
@@ -140,18 +158,30 @@ export class TarefaService {
   }
 
   criar(dados: CriarTarefaRequest): Observable<Tarefa> {
-    this.validarDados(dados.titulo, dados.descricao);
+    this.validarDados(
+      dados.titulo,
+      dados.descricao
+    );
 
-    return this.http.post<Tarefa>(
-      this.apiUrl,
-      {
-        titulo: dados.titulo.trim(),
-        descricao: dados.descricao?.trim() ?? null,
-        prioridade: dados.prioridade
-      },
-      {
-        withCredentials: true
-      }
+    this.validarPrioridade(dados.prioridade);
+
+    const payload: CriarTarefaRequest = {
+      titulo: dados.titulo.trim(),
+      descricao: dados.descricao?.trim() ?? null,
+      prioridade: dados.prioridade
+    };
+
+    return this.authService.obterCabecalhosCsrf().pipe(
+      switchMap((headers) => {
+        return this.http.post<Tarefa>(
+          this.apiUrl,
+          payload,
+          {
+            headers,
+            withCredentials: true
+          }
+        );
+      })
     );
   }
 
@@ -161,36 +191,59 @@ export class TarefaService {
   ): Observable<Tarefa> {
     const tarefaId = this.validarId(id);
 
-    this.validarDados(dados.titulo, dados.descricao);
+    this.validarDados(
+      dados.titulo,
+      dados.descricao
+    );
 
-    return this.http.put<Tarefa>(
-      `${this.apiUrl}/${tarefaId}`,
-      {
-        titulo: dados.titulo.trim(),
-        descricao: dados.descricao?.trim() ?? null,
-        status: dados.status,
-        prioridade: dados.prioridade
-      },
-      {
-        withCredentials: true
-      }
+    this.validarStatus(dados.status);
+    this.validarPrioridade(dados.prioridade);
+
+    const payload: AtualizarTarefaRequest = {
+      titulo: dados.titulo.trim(),
+      descricao: dados.descricao?.trim() ?? null,
+      status: dados.status,
+      prioridade: dados.prioridade
+    };
+
+    return this.authService.obterCabecalhosCsrf().pipe(
+      switchMap((headers) => {
+        return this.http.put<Tarefa>(
+          `${this.apiUrl}/${tarefaId}`,
+          payload,
+          {
+            headers,
+            withCredentials: true
+          }
+        );
+      })
     );
   }
 
   excluir(id: number): Observable<void> {
     const tarefaId = this.validarId(id);
 
-    return this.http.delete<void>(
-      `${this.apiUrl}/${tarefaId}`,
-      {
-        withCredentials: true
-      }
+    return this.authService.obterCabecalhosCsrf().pipe(
+      switchMap((headers) => {
+        return this.http.delete<void>(
+          `${this.apiUrl}/${tarefaId}`,
+          {
+            headers,
+            withCredentials: true
+          }
+        );
+      })
     );
   }
 
   private validarId(id: number): number {
-    if (!Number.isSafeInteger(id) || id <= 0) {
-      throw new RangeError('Identificador da tarefa inválido.');
+    if (
+      !Number.isSafeInteger(id) ||
+      id <= 0
+    ) {
+      throw new RangeError(
+        'Identificador da tarefa inválido.'
+      );
     }
 
     return id;
@@ -219,6 +272,38 @@ export class TarefaService {
     ) {
       throw new Error(
         'A descrição deve conter no máximo 2000 caracteres.'
+      );
+    }
+  }
+
+  private validarStatus(
+    status: StatusTarefa
+  ): void {
+    const permitidos: StatusTarefa[] = [
+      'PENDENTE',
+      'EM_ANDAMENTO',
+      'CONCLUIDA'
+    ];
+
+    if (!permitidos.includes(status)) {
+      throw new Error(
+        'Status da tarefa inválido.'
+      );
+    }
+  }
+
+  private validarPrioridade(
+    prioridade: PrioridadeTarefa
+  ): void {
+    const permitidas: PrioridadeTarefa[] = [
+      'BAIXA',
+      'MEDIA',
+      'ALTA'
+    ];
+
+    if (!permitidas.includes(prioridade)) {
+      throw new Error(
+        'Prioridade da tarefa inválida.'
       );
     }
   }
