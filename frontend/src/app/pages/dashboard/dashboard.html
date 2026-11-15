@@ -2,23 +2,23 @@
 <div class="dashboard">
   <aside class="sidebar">
     <div class="brand">
-      <span class="brand-icon">✓</span>
+      <span class="brand-icon" aria-hidden="true">✓</span>
       <span>DevTask</span>
     </div>
 
-    <div class="navigation">
+    <nav class="navigation" aria-label="Menu principal">
       <span class="navigation-label">MENU PRINCIPAL</span>
 
-      <div class="navigation-item active">
-        <span>▦</span>
+      <div class="navigation-item active" aria-current="page">
+        <span aria-hidden="true">▦</span>
         <span>Visão geral</span>
       </div>
 
       <div class="navigation-item">
-        <span>☑</span>
+        <span aria-hidden="true">☑</span>
         <span>Minhas tarefas</span>
       </div>
-    </div>
+    </nav>
 
     <div class="sidebar-footer">
       <span>DevTask</span>
@@ -30,45 +30,263 @@
     <header class="topbar">
       <div>
         <span class="eyebrow">ÁREA DE TRABALHO</span>
+
         <h1>Visão geral</h1>
-        <p>Organize suas tarefas e acompanhe suas atividades.</p>
+
+        <p>
+          Organize suas tarefas e acompanhe suas atividades.
+        </p>
       </div>
 
       <div class="profile">
-        <div class="avatar">D</div>
+        <div class="avatar" aria-hidden="true">D</div>
         <span>Minha conta</span>
       </div>
     </header>
 
     <section class="welcome">
-      <span class="welcome-label">BEM-VINDO AO DEVTASK</span>
+      <span class="welcome-label">
+        BEM-VINDO AO DEVTASK
+      </span>
 
       <h2>Seu trabalho, mais organizado.</h2>
 
       <p>
-        Este é seu painel pessoal. Em breve, suas tarefas
-        aparecerão aqui, com prioridades, prazos e progresso.
+        Acompanhe suas tarefas, visualize suas prioridades
+        e mantenha o controle sobre suas atividades.
       </p>
     </section>
 
-    <section class="content-section">
+    <section class="statistics" aria-label="Estatísticas das tarefas">
+      <div class="stat-card">
+        <div class="stat-header">
+          <span>Total de tarefas</span>
+          <span class="stat-icon total" aria-hidden="true">▦</span>
+        </div>
+
+        <strong>{{ totalTarefas() }}</strong>
+
+        <small>Tarefas cadastradas</small>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span>Pendentes</span>
+          <span class="stat-icon pending" aria-hidden="true">◷</span>
+        </div>
+
+        <strong>{{ totalPendentes() }}</strong>
+
+        <small>Aguardando início</small>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span>Em andamento</span>
+          <span class="stat-icon progress" aria-hidden="true">↻</span>
+        </div>
+
+        <strong>{{ totalEmAndamento() }}</strong>
+
+        <small>Em desenvolvimento</small>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span>Concluídas</span>
+          <span class="stat-icon done" aria-hidden="true">✓</span>
+        </div>
+
+        <strong>{{ totalConcluidas() }}</strong>
+
+        <small>Atividades finalizadas</small>
+      </div>
+    </section>
+
+    <section class="progress-section">
+      <div class="progress-header">
+        <div>
+          <h2>Seu progresso</h2>
+          <p>Percentual de tarefas concluídas</p>
+        </div>
+
+        <strong>{{ percentualConclusao() }}%</strong>
+      </div>
+
+      <div
+        class="progress-track"
+        role="progressbar"
+        [attr.aria-valuenow]="percentualConclusao()"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-label="Progresso das tarefas concluídas"
+      >
+        <div
+          class="progress-fill"
+          [style.width.%]="percentualConclusao()"
+        ></div>
+      </div>
+    </section>
+
+    <section class="content-section" aria-labelledby="tasks-title">
       <div class="section-heading">
         <div>
-          <h2>Minhas tarefas</h2>
-          <p>Gerencie suas atividades em um único lugar.</p>
+          <h2 id="tasks-title">Minhas tarefas</h2>
+          <p>
+            Consulte suas atividades e acompanhe suas prioridades.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          class="refresh-button"
+          (click)="carregarTarefas()"
+          [disabled]="carregando()"
+        >
+          <span aria-hidden="true">↻</span>
+          Atualizar
+        </button>
+      </div>
+
+      <div class="filters">
+        <div class="filter-group">
+          <label for="filtro-status">Status</label>
+
+          <select
+            id="filtro-status"
+            [value]="filtroStatus()"
+            (change)="alterarFiltroStatus($any($event.target).value)"
+          >
+            <option value="TODAS">Todos os status</option>
+            <option value="PENDENTE">Pendente</option>
+            <option value="EM_ANDAMENTO">Em andamento</option>
+            <option value="CONCLUIDA">Concluída</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="filtro-prioridade">Prioridade</label>
+
+          <select
+            id="filtro-prioridade"
+            [value]="filtroPrioridade()"
+            (change)="alterarFiltroPrioridade($any($event.target).value)"
+          >
+            <option value="TODAS">Todas as prioridades</option>
+            <option value="BAIXA">Baixa</option>
+            <option value="MEDIA">Média</option>
+            <option value="ALTA">Alta</option>
+          </select>
+        </div>
+
+        <div class="filter-summary">
+          @if (!carregando() && !mensagemErro()) {
+            {{ tarefasFiltradas().length }}
+            de
+            {{ totalTarefas() }}
+            tarefas
+          }
         </div>
       </div>
 
-      <div class="empty-state">
-        <div class="empty-icon">☑</div>
+      @if (carregando()) {
+        <div class="empty-state" role="status">
+          <div class="loading-spinner" aria-hidden="true"></div>
 
-        <h3>Seu painel está pronto!</h3>
+          <h3>Carregando tarefas...</h3>
 
-        <p>
-          A próxima etapa será conectar suas tarefas
-          armazenadas no PostgreSQL.
-        </p>
-      </div>
+          <p>
+            Estamos consultando suas atividades no servidor.
+          </p>
+        </div>
+      } @else if (mensagemErro()) {
+        <div class="empty-state error-state" role="alert">
+          <div class="empty-icon error-icon" aria-hidden="true">
+            !
+          </div>
+
+          <h3>Não foi possível carregar as tarefas</h3>
+
+          <p>{{ mensagemErro() }}</p>
+
+          <button
+            type="button"
+            class="retry-button"
+            (click)="carregarTarefas()"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      } @else if (totalTarefas() === 0) {
+        <div class="empty-state">
+          <div class="empty-icon" aria-hidden="true">☑</div>
+
+          <h3>Nenhuma tarefa cadastrada</h3>
+
+          <p>
+            Você ainda não possui tarefas cadastradas.
+            Quando adicionar uma tarefa, ela aparecerá aqui.
+          </p>
+        </div>
+      } @else if (tarefasFiltradas().length === 0) {
+        <div class="empty-state">
+          <div class="empty-icon" aria-hidden="true">⌕</div>
+
+          <h3>Nenhuma tarefa encontrada</h3>
+
+          <p>
+            Não existem tarefas que correspondam
+            aos filtros selecionados.
+          </p>
+        </div>
+      } @else {
+        <div class="task-list">
+          @for (tarefa of tarefasFiltradas(); track tarefa.id) {
+            <article class="task-card">
+              <div class="task-content">
+                <div class="task-top">
+                  <span class="task-id">
+                    Tarefa #{{ tarefa.id }}
+                  </span>
+
+                  <span
+                    class="status-badge"
+                    [class.status-pending]="tarefa.status === 'PENDENTE'"
+                    [class.status-progress]="tarefa.status === 'EM_ANDAMENTO'"
+                    [class.status-done]="tarefa.status === 'CONCLUIDA'"
+                  >
+                    {{ nomeStatus(tarefa.status) }}
+                  </span>
+                </div>
+
+                <h3>{{ tarefa.titulo }}</h3>
+
+                @if (tarefa.descricao) {
+                  <p class="task-description">
+                    {{ tarefa.descricao }}
+                  </p>
+                } @else {
+                  <p class="task-description no-description">
+                    Sem descrição.
+                  </p>
+                }
+
+                <div class="task-footer">
+                  <span
+                    class="priority-badge"
+                    [class.priority-low]="tarefa.prioridade === 'BAIXA'"
+                    [class.priority-medium]="tarefa.prioridade === 'MEDIA'"
+                    [class.priority-high]="tarefa.prioridade === 'ALTA'"
+                  >
+                    <span class="priority-dot" aria-hidden="true"></span>
+                    Prioridade {{ nomePrioridade(tarefa.prioridade) }}
+                  </span>
+                </div>
+              </div>
+            </article>
+          }
+        </div>
+      }
     </section>
   </main>
 </div>
