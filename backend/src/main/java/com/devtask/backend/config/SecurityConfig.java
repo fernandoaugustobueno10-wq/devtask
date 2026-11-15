@@ -1,6 +1,8 @@
 
 package com.devtask.backend.config;
 
+import jakarta.servlet.http.HttpServletResponse;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -19,6 +21,10 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/auth/csrf"
+                        ).permitAll()
+                        .requestMatchers(
                                 HttpMethod.POST,
                                 "/api/usuarios/cadastro"
                         ).permitAll()
@@ -31,7 +37,28 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form
-                        .defaultSuccessUrl("/api/tarefas", true)
+                        .loginProcessingUrl("/api/auth/login")
+                        .successHandler((request, response, authentication) -> {
+                            response.setHeader(
+                                    "Cache-Control",
+                                    "no-store"
+                            );
+
+                            response.setStatus(
+                                    HttpServletResponse.SC_NO_CONTENT
+                            );
+                        })
+                        .failureHandler((request, response, exception) -> {
+                            response.setHeader(
+                                    "Cache-Control",
+                                    "no-store"
+                            );
+
+                            response.setStatus(
+                                    HttpServletResponse.SC_UNAUTHORIZED
+                            );
+                        })
+                        .permitAll()
                 )
                 .logout(withDefaults())
                 .csrf(withDefaults());
