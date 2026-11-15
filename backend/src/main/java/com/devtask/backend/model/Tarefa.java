@@ -37,6 +37,9 @@ public class Tarefa {
     @Column(name = "data_criacao", nullable = false)
     private LocalDateTime dataCriacao;
 
+    @Column(name = "usuario_id")
+    private Long usuarioId;
+
     protected Tarefa() {
     }
 
@@ -102,5 +105,26 @@ public class Tarefa {
 
     public void setDataCriacao(LocalDateTime dataCriacao) {
         this.dataCriacao = dataCriacao;
+    }
+
+    public Long getUsuarioId() {
+        return usuarioId;
+    }
+
+    public void atribuirProprietario(Long usuarioId) {
+        if (usuarioId == null || usuarioId <= 0) {
+            throw new IllegalArgumentException(
+                    "O proprietario da tarefa e obrigatorio."
+            );
+        }
+
+        if (this.usuarioId != null
+                && !this.usuarioId.equals(usuarioId)) {
+            throw new IllegalStateException(
+                    "Nao e permitido alterar o proprietario da tarefa."
+            );
+        }
+
+        this.usuarioId = usuarioId;
     }
 }

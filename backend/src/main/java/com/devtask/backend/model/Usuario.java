@@ -62,4 +62,8 @@ public class Usuario {
     public LocalDateTime getCriadoEm() {
         return criadoEm;
     }
+
+    public String senhaHashParaAutenticacao() {
+        return senhaHash;
+    }
 }
