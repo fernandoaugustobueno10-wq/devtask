@@ -39,29 +39,51 @@ public class SecurityConfig {
                 )
                 .formLogin(form -> form
                         .loginProcessingUrl("/api/auth/login")
-                        .successHandler((request, response, authentication) -> {
-                            response.setHeader(
-                                    "Cache-Control",
-                                    "no-store"
-                            );
+                        .successHandler(
+                                (request, response, authentication) -> {
+                                    response.setHeader(
+                                            "Cache-Control",
+                                            "no-store"
+                                    );
 
-                            response.setStatus(
-                                    HttpServletResponse.SC_NO_CONTENT
-                            );
-                        })
-                        .failureHandler((request, response, exception) -> {
-                            response.setHeader(
-                                    "Cache-Control",
-                                    "no-store"
-                            );
+                                    response.setStatus(
+                                            HttpServletResponse.SC_NO_CONTENT
+                                    );
+                                }
+                        )
+                        .failureHandler(
+                                (request, response, exception) -> {
+                                    response.setHeader(
+                                            "Cache-Control",
+                                            "no-store"
+                                    );
 
-                            response.setStatus(
-                                    HttpServletResponse.SC_UNAUTHORIZED
-                            );
-                        })
+                                    response.setStatus(
+                                            HttpServletResponse.SC_UNAUTHORIZED
+                                    );
+                                }
+                        )
                         .permitAll()
                 )
-                .logout(withDefaults())
+                .logout(logout -> logout
+                        .logoutUrl("/api/auth/logout")
+                        .invalidateHttpSession(true)
+                        .clearAuthentication(true)
+                        .deleteCookies("JSESSIONID")
+                        .logoutSuccessHandler(
+                                (request, response, authentication) -> {
+                                    response.setHeader(
+                                            "Cache-Control",
+                                            "no-store"
+                                    );
+
+                                    response.setStatus(
+                                            HttpServletResponse.SC_NO_CONTENT
+                                    );
+                                }
+                        )
+                        .permitAll()
+                )
                 .csrf(withDefaults());
 
         return http.build();

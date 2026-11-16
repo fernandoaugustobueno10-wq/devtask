@@ -17,6 +17,8 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 
+import { AuthService } from '../../services/auth.service';
+
 import {
   AtualizarTarefaRequest,
   CriarTarefaRequest,
@@ -35,6 +37,7 @@ import {
 })
 export class Dashboard implements OnInit {
   private readonly tarefaService = inject(TarefaService);
+  private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly injector = inject(Injector);
   private readonly document = inject(DOCUMENT);
@@ -57,6 +60,9 @@ export class Dashboard implements OnInit {
   readonly tarefas = signal<Tarefa[]>([]);
   readonly carregando = signal(true);
   readonly mensagemErro = signal('');
+
+  readonly saindo = signal(false);
+  readonly erroLogout = signal('');
 
   readonly filtroStatus = signal<StatusTarefa | 'TODAS'>(
     'TODAS'
@@ -142,11 +148,19 @@ export class Dashboard implements OnInit {
   }
 
   carregarTarefas(): void {
+    if (this.saindo()) {
+      return;
+    }
+
     this.carregando.set(true);
     this.mensagemErro.set('');
 
     this.tarefaService.listar().subscribe({
       next: (tarefas) => {
+        if (this.saindo()) {
+          return;
+        }
+
         this.carregando.set(false);
 
         if (!Array.isArray(tarefas)) {
@@ -161,6 +175,10 @@ export class Dashboard implements OnInit {
       },
 
       error: (erro: unknown) => {
+        if (this.saindo()) {
+          return;
+        }
+
         this.carregando.set(false);
         this.tarefas.set([]);
 
@@ -189,8 +207,80 @@ export class Dashboard implements OnInit {
     });
   }
 
+  sair(): void {
+    if (
+      this.saindo() ||
+      this.salvandoTarefa() ||
+      this.excluindoTarefa() ||
+      this.exibindoFormulario() ||
+      this.tarefaParaExcluir() !== null
+    ) {
+      return;
+    }
+
+    this.saindo.set(true);
+    this.erroLogout.set('');
+    this.sucessoCadastro.set('');
+
+    this.authService.logout().subscribe({
+      next: () => {
+        this.tarefas.set([]);
+        this.mensagemErro.set('');
+        this.carregando.set(false);
+
+        void this.router.navigateByUrl(
+          '/login',
+          { replaceUrl: true }
+        ).then((navegou) => {
+          if (!navegou) {
+            this.erroLogout.set(
+              'A sessão foi encerrada, mas não foi possível ' +
+              'abrir a tela de login.'
+            );
+          }
+
+          this.saindo.set(false);
+        }).catch(() => {
+          this.saindo.set(false);
+          this.erroLogout.set(
+            'A sessão foi encerrada, mas houve um erro ' +
+            'ao abrir a tela de login.'
+          );
+        });
+      },
+
+      error: (erro: unknown) => {
+        this.saindo.set(false);
+
+        if (erro instanceof HttpErrorResponse) {
+          if (erro.status === 0) {
+            this.erroLogout.set(
+              'Não foi possível conectar ao servidor ' +
+              'para encerrar a sessão.'
+            );
+            return;
+          }
+
+          if (erro.status === 401 || erro.status === 403) {
+            this.erroLogout.set(
+              'Não foi possível confirmar o logout. ' +
+              'Atualize a página ou faça login novamente.'
+            );
+            return;
+          }
+        }
+
+        this.erroLogout.set(
+          'Não foi possível encerrar a sessão. ' +
+          'Tente novamente.'
+        );
+      }
+    });
+  }
+
   abrirFormulario(): void {
     if (
+      this.saindo() ||
       this.salvandoTarefa() ||
       this.excluindoTarefa() ||
       this.tarefaParaExcluir()
@@ -205,6 +295,7 @@ export class Dashboard implements OnInit {
 
   editarTarefa(tarefa: Tarefa): void {
     if (
+      this.saindo() ||
       this.salvandoTarefa() ||
       this.excluindoTarefa() ||
       this.tarefaParaExcluir()
@@ -263,6 +354,7 @@ export class Dashboard implements OnInit {
 
   abrirConfirmacaoExclusao(tarefa: Tarefa): void {
     if (
+      this.saindo() ||
       this.exibindoFormulario() ||
       this.salvandoTarefa() ||
       this.excluindoTarefa() ||
@@ -290,7 +382,6 @@ export class Dashboard implements OnInit {
 
     this.erroExclusao.set('');
     this.sucessoCadastro.set('');
-
     this.tarefaParaExcluir.set(tarefa);
 
     afterNextRender(
@@ -316,7 +407,11 @@ export class Dashboard implements OnInit {
   confirmarExclusao(): void {
     const tarefa = this.tarefaParaExcluir();
 
-    if (!tarefa || this.excluindoTarefa()) {
+    if (
+      !tarefa ||
+      this.excluindoTarefa() ||
+      this.saindo()
+    ) {
       return;
     }
 
@@ -355,7 +450,8 @@ export class Dashboard implements OnInit {
 
           if (erro.status === 404) {
             this.erroExclusao.set(
-              'A tarefa não foi encontrada ou não pertence à sua conta.'
+              'A tarefa não foi encontrada ou não ' +
+              'pertence à sua conta.'
             );
             return;
           }
@@ -478,6 +574,7 @@ export class Dashboard implements OnInit {
 
   salvarTarefa(): void {
     if (
+      this.saindo() ||
       this.salvandoTarefa() ||
       !this.exibindoFormulario()
     ) {
@@ -608,7 +705,8 @@ export class Dashboard implements OnInit {
 
       if (erro.status === 404) {
         this.erroCadastro.set(
-          'Tarefa não encontrada ou indisponível para sua conta.'
+          'Tarefa não encontrada ou indisponível ' +
+          'para sua conta.'
         );
         return;
       }

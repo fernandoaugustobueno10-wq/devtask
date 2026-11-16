@@ -115,4 +115,19 @@ export class AuthService {
       map(() => undefined)
     );
   }
+
+  logout(): Observable<void> {
+    return this.obterCabecalhosCsrf().pipe(
+      switchMap((headers) => {
+        return this.http.post<void>(
+          '/api/auth/logout',
+          null,
+          {
+            headers,
+            withCredentials: true
+          }
+        );
+      })
+    );
+  }
 }

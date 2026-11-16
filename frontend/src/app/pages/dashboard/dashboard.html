@@ -14,12 +14,12 @@
 
     <nav class="sidebar-nav" aria-label="Menu principal">
       <div class="nav-item active" aria-current="page">
-        <span class="nav-icon">▦</span>
+        <span class="nav-icon" aria-hidden="true">▦</span>
         <span>Dashboard</span>
       </div>
 
       <div class="nav-item">
-        <span class="nav-icon">☷</span>
+        <span class="nav-icon" aria-hidden="true">☷</span>
         <span>Minhas tarefas</span>
       </div>
     </nav>
@@ -27,6 +27,28 @@
     <div class="sidebar-footer">
       <p>Organize suas tarefas.</p>
       <p>Acompanhe seu progresso.</p>
+
+      <button
+        type="button"
+        class="btn-secondary btn-logout"
+        (click)="sair()"
+        [disabled]="
+          saindo() ||
+          salvandoTarefa() ||
+          excluindoTarefa() ||
+          exibindoFormulario() ||
+          tarefaParaExcluir() !== null
+        "
+        aria-label="Encerrar sessão do DevTask"
+      >
+        <span aria-hidden="true">⇥</span>
+
+        @if (saindo()) {
+          Saindo...
+        } @else {
+          Sair
+        }
+      </button>
     </div>
   </aside>
 
@@ -48,12 +70,22 @@
         type="button"
         class="btn-primary btn-nova-tarefa"
         (click)="abrirFormulario()"
-        [disabled]="salvandoTarefa() || excluindoTarefa()"
+        [disabled]="
+          saindo() ||
+          salvandoTarefa() ||
+          excluindoTarefa()
+        "
       >
         <span aria-hidden="true">+</span>
         Nova tarefa
       </button>
     </header>
+
+    @if (erroLogout()) {
+      <div class="alert alert-error logout-error" role="alert">
+        {{ erroLogout() }}
+      </div>
+    }
 
     <section
       class="stats-grid"
@@ -166,7 +198,7 @@
           type="button"
           class="btn-secondary"
           (click)="carregarTarefas()"
-          [disabled]="carregando() || excluindoTarefa()"
+          [disabled]="carregando() || saindo() || excluindoTarefa()"
         >
           Atualizar
         </button>
@@ -180,6 +212,7 @@
             id="filtro-status"
             [value]="filtroStatus()"
             (change)="alterarFiltroStatus($any($event.target).value)"
+            [disabled]="saindo()"
           >
             <option value="TODAS">Todas</option>
             <option value="PENDENTE">Pendente</option>
@@ -195,6 +228,7 @@
             id="filtro-prioridade"
             [value]="filtroPrioridade()"
             (change)="alterarFiltroPrioridade($any($event.target).value)"
+            [disabled]="saindo()"
           >
             <option value="TODAS">Todas</option>
             <option value="BAIXA">Baixa</option>
@@ -219,6 +253,7 @@
             type="button"
             class="btn-secondary"
             (click)="carregarTarefas()"
+            [disabled]="saindo()"
           >
             Tentar novamente
           </button>
@@ -244,6 +279,7 @@
               type="button"
               class="btn-primary"
               (click)="abrirFormulario()"
+              [disabled]="saindo()"
             >
               Criar primeira tarefa
             </button>
@@ -299,7 +335,11 @@
                     class="btn-secondary"
                     [attr.aria-label]="'Editar tarefa: ' + tarefa.titulo"
                     (click)="editarTarefa(tarefa)"
-                    [disabled]="salvandoTarefa() || excluindoTarefa()"
+                    [disabled]="
+                      saindo() ||
+                      salvandoTarefa() ||
+                      excluindoTarefa()
+                    "
                   >
                     Editar
                   </button>
@@ -309,7 +349,11 @@
                     class="btn-danger"
                     [attr.aria-label]="'Excluir tarefa: ' + tarefa.titulo"
                     (click)="abrirConfirmacaoExclusao(tarefa)"
-                    [disabled]="salvandoTarefa() || excluindoTarefa()"
+                    [disabled]="
+                      saindo() ||
+                      salvandoTarefa() ||
+                      excluindoTarefa()
+                    "
                   >
                     Excluir
                   </button>
@@ -423,9 +467,7 @@
 
           <div class="field-info">
             <span>Opcional</span>
-            <span>
-              {{ descricaoNovaTarefa.length }}/2000
-            </span>
+            <span>{{ descricaoNovaTarefa.length }}/2000</span>
           </div>
         </div>
 
