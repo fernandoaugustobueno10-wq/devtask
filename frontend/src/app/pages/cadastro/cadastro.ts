@@ -1,10 +1,15 @@
 
-import { Component } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, inject, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
+
+import { UsuarioService } from '../../services/usuario.service';
 
 @Component({
   selector: 'app-cadastro',
-  imports: [RouterLink],
+  standalone: true,
+  imports: [FormsModule, RouterLink],
   template: `
     <main class="cadastro-page">
       <section class="presentation">
@@ -56,15 +61,21 @@ import { RouterLink } from '@angular/router';
           </div>
 
           <span class="section-label">CRIE SEU ESPAÇO</span>
+
           <h2>Crie sua conta</h2>
 
           <p class="form-description">
             Preencha seus dados para começar a utilizar o DevTask.
           </p>
 
-          <form>
+          <form
+            #formCadastro="ngForm"
+            (ngSubmit)="cadastrar()"
+            novalidate
+          >
             <div class="form-field">
               <label for="nome">Nome completo</label>
+
               <input
                 id="nome"
                 name="nome"
@@ -73,11 +84,22 @@ import { RouterLink } from '@angular/router';
                 autocomplete="name"
                 maxlength="120"
                 required
+                [(ngModel)]="nome"
+                #campoNome="ngModel"
+                [disabled]="cadastrando()"
+                [attr.aria-invalid]="campoNome.invalid && campoNome.touched"
               />
+
+              @if (campoNome.invalid && campoNome.touched) {
+                <small class="field-error">
+                  Informe seu nome completo.
+                </small>
+              }
             </div>
 
             <div class="form-field">
               <label for="email">E-mail</label>
+
               <input
                 id="email"
                 name="email"
@@ -86,11 +108,23 @@ import { RouterLink } from '@angular/router';
                 autocomplete="email"
                 maxlength="254"
                 required
+                email
+                [(ngModel)]="email"
+                #campoEmail="ngModel"
+                [disabled]="cadastrando()"
+                [attr.aria-invalid]="campoEmail.invalid && campoEmail.touched"
               />
+
+              @if (campoEmail.invalid && campoEmail.touched) {
+                <small class="field-error">
+                  Informe um e-mail válido.
+                </small>
+              }
             </div>
 
             <div class="form-field">
               <label for="senha">Senha</label>
+
               <input
                 id="senha"
                 name="senha"
@@ -98,14 +132,35 @@ import { RouterLink } from '@angular/router';
                 placeholder="Crie uma senha"
                 autocomplete="new-password"
                 required
+                minlength="12"
+                [(ngModel)]="senha"
+                #campoSenha="ngModel"
+                [disabled]="cadastrando()"
+                [attr.aria-invalid]="campoSenha.invalid && campoSenha.touched"
+                aria-describedby="senha-orientacao"
               />
-              <small>
-                Utilize uma senha forte e exclusiva.
+
+              <small id="senha-orientacao">
+                Use uma senha exclusiva com pelo menos
+                12 caracteres e até 72 bytes em UTF-8.
               </small>
+
+              @if (campoSenha.invalid && campoSenha.touched) {
+                <small class="field-error">
+                  A senha deve conter pelo menos 12 caracteres.
+                </small>
+              }
+
+              @if (senha.length > 0 && senhaEmBytes() > 72) {
+                <small class="field-error">
+                  A senha ultrapassa o limite de 72 bytes em UTF-8.
+                </small>
+              }
             </div>
 
             <div class="form-field">
               <label for="confirmarSenha">Confirmar senha</label>
+
               <input
                 id="confirmarSenha"
                 name="confirmarSenha"
@@ -113,23 +168,49 @@ import { RouterLink } from '@angular/router';
                 placeholder="Digite a senha novamente"
                 autocomplete="new-password"
                 required
+                [(ngModel)]="confirmarSenha"
+                #campoConfirmacao="ngModel"
+                [disabled]="cadastrando()"
+                [attr.aria-invalid]="
+                  campoConfirmacao.touched &&
+                  (campoConfirmacao.invalid || senha !== confirmarSenha)
+                "
               />
+
+              @if (
+                campoConfirmacao.touched &&
+                confirmarSenha.length > 0 &&
+                senha !== confirmarSenha
+              ) {
+                <small class="field-error">
+                  As senhas informadas não coincidem.
+                </small>
+              }
             </div>
+
+            @if (mensagemErro()) {
+              <div class="error-alert" role="alert">
+                {{ mensagemErro() }}
+              </div>
+            }
 
             <button
               class="submit-button"
-              type="button"
-              disabled
-              title="Cadastro em desenvolvimento"
+              type="submit"
+              [disabled]="
+                cadastrando() ||
+                formCadastro.invalid ||
+                senha !== confirmarSenha ||
+                senhaEmBytes() > 72
+              "
             >
-              Criar minha conta
-              <span aria-hidden="true">→</span>
+              @if (cadastrando()) {
+                Criando sua conta...
+              } @else {
+                Criar minha conta
+                <span aria-hidden="true">→</span>
+              }
             </button>
-
-            <p class="integration-notice">
-              O cadastro ficará disponível após a integração
-              com o backend.
-            </p>
           </form>
 
           <div class="form-footer">
@@ -319,9 +400,33 @@ import { RouterLink } from '@angular/router';
       box-shadow: 0 0 0 3px rgba(132, 119, 255, 0.14);
     }
 
+    input[aria-invalid="true"] {
+      border-color: #ef7985;
+    }
+
+    input:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
     small {
       color: #8e9bb3;
       font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .field-error {
+      color: #fca5a5;
+    }
+
+    .error-alert {
+      padding: 13px 15px;
+      border: 1px solid #7f3640;
+      border-radius: 10px;
+      color: #fecaca;
+      background: #48252f;
+      font-size: 13px;
+      line-height: 1.5;
     }
 
     .submit-button {
@@ -338,16 +443,23 @@ import { RouterLink } from '@angular/router';
       color: white;
       font: inherit;
       font-weight: 700;
-      opacity: 0.65;
+      cursor: pointer;
+      transition: background 0.2s, opacity 0.2s;
+    }
+
+    .submit-button:hover:not(:disabled) {
+      background: #584be0;
+    }
+
+    .submit-button:disabled {
+      opacity: 0.55;
       cursor: not-allowed;
     }
 
-    .integration-notice {
-      margin: 0;
-      color: #8e9bb3;
-      font-size: 12px;
-      line-height: 1.6;
-      text-align: center;
+    .submit-button:focus-visible,
+    .form-footer a:focus-visible {
+      outline: 2px solid #aaa3ff;
+      outline-offset: 3px;
     }
 
     .form-footer {
@@ -406,6 +518,155 @@ import { RouterLink } from '@angular/router';
         font-size: 29px;
       }
     }
+
+    @media (prefers-reduced-motion: reduce) {
+      input,
+      .submit-button {
+        transition: none;
+      }
+    }
   `]
 })
-export class Cadastro {}
+export class Cadastro {
+  private readonly usuarioService = inject(UsuarioService);
+  private readonly router = inject(Router);
+
+  readonly cadastrando = signal(false);
+  readonly mensagemErro = signal('');
+
+  nome = '';
+  email = '';
+  senha = '';
+  confirmarSenha = '';
+
+  senhaEmBytes(): number {
+    return new TextEncoder().encode(this.senha).length;
+  }
+
+  cadastrar(): void {
+    if (this.cadastrando()) {
+      return;
+    }
+
+    this.mensagemErro.set('');
+
+    const nome = this.nome.trim();
+    const email = this.email.trim().toLowerCase();
+    const senha = this.senha;
+    const confirmarSenha = this.confirmarSenha;
+
+    if (nome.length === 0 || nome.length > 120) {
+      this.mensagemErro.set(
+        'Informe um nome com até 120 caracteres.'
+      );
+      return;
+    }
+
+    if (
+      email.length === 0 ||
+      email.length > 254 ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    ) {
+      this.mensagemErro.set('Informe um e-mail válido.');
+      return;
+    }
+
+    if (Array.from(senha).length < 12) {
+      this.mensagemErro.set(
+        'A senha deve conter pelo menos 12 caracteres.'
+      );
+      return;
+    }
+
+    if (!senha.trim()) {
+      this.mensagemErro.set('Informe uma senha válida.');
+      return;
+    }
+
+    if (this.senhaEmBytes() > 72) {
+      this.mensagemErro.set(
+        'A senha ultrapassa 72 bytes em UTF-8.'
+      );
+      return;
+    }
+
+    if (senha !== confirmarSenha) {
+      this.mensagemErro.set(
+        'As senhas informadas não coincidem.'
+      );
+      return;
+    }
+
+    this.cadastrando.set(true);
+
+    this.usuarioService.cadastrar({
+      nome,
+      email,
+      senha
+    }).subscribe({
+      next: () => {
+        this.cadastrando.set(false);
+        this.senha = '';
+        this.confirmarSenha = '';
+
+        void this.router.navigateByUrl('/login', {
+          replaceUrl: true
+        }).then((navegou) => {
+          if (!navegou) {
+            this.mensagemErro.set(
+              'Conta criada, mas não foi possível abrir o login.'
+            );
+          }
+        }).catch(() => {
+          this.mensagemErro.set(
+            'Conta criada, mas houve um erro ao abrir o login.'
+          );
+        });
+      },
+
+      error: (erro: unknown) => {
+        this.cadastrando.set(false);
+
+        if (erro instanceof HttpErrorResponse) {
+          if (erro.status === 409) {
+            this.mensagemErro.set(
+              'Este e-mail já possui uma conta cadastrada.'
+            );
+            return;
+          }
+
+          if (erro.status === 400) {
+            this.mensagemErro.set(
+              'Os dados informados são inválidos. ' +
+              'Confira os campos e tente novamente.'
+            );
+            return;
+          }
+
+          if (erro.status === 403) {
+            this.mensagemErro.set(
+              'Não foi possível validar a proteção de segurança. ' +
+              'Atualize a página e tente novamente.'
+            );
+            return;
+          }
+
+          if (erro.status === 0) {
+            this.mensagemErro.set(
+              'Não foi possível conectar ao servidor. ' +
+              'Verifique se o backend está funcionando.'
+            );
+            return;
+          }
+        }
+
+        this.mensagemErro.set(
+          erro instanceof Error &&
+          !(erro instanceof HttpErrorResponse)
+            ? erro.message
+            : 'Não foi possível criar sua conta. Tente novamente.'
+        );
+      }
+    });
+  }
+}
