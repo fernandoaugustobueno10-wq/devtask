@@ -22,6 +22,104 @@ body {
 }
 
 button,
-input {
+input,
+textarea,
+select {
   font: inherit;
+}
+
+/* Melhorias restritas ao dashboard do DevTask. */
+app-dashboard .btn-primary,
+app-dashboard .btn-secondary,
+app-dashboard .btn-danger,
+app-dashboard .modal-close {
+  min-height: 44px;
+}
+
+app-dashboard .modal-close {
+  min-width: 44px;
+}
+
+app-dashboard .task-actions .btn-secondary,
+app-dashboard .task-actions .btn-danger {
+  min-height: 44px;
+}
+
+app-dashboard .filter-group select,
+app-dashboard .form-group input,
+app-dashboard .form-group select {
+  min-height: 44px;
+}
+
+app-dashboard .brand-description,
+app-dashboard .stat-description,
+app-dashboard .sidebar-footer p,
+app-dashboard .field-info,
+app-dashboard .task-id {
+  color: #a6b6cb;
+}
+
+app-dashboard .form-group input::placeholder,
+app-dashboard .form-group textarea::placeholder {
+  color: #a6b6cb;
+}
+
+app-dashboard :is(button, input, textarea, select):focus-visible {
+  outline: 3px solid #c4b5fd;
+  outline-offset: 3px;
+}
+
+app-dashboard .task-card,
+app-dashboard .task-content,
+app-dashboard .task-description {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+  app-dashboard .sidebar-footer {
+    align-items: stretch;
+  }
+
+  app-dashboard .btn-logout {
+    min-height: 44px;
+  }
+
+  app-dashboard .modal-backdrop {
+    padding: 12px;
+  }
+
+  app-dashboard .task-modal {
+    max-height: calc(100dvh - 24px);
+    overscroll-behavior: contain;
+  }
+}
+
+@media (max-width: 480px) {
+  app-dashboard .main-content {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  app-dashboard .task-card {
+    padding: 16px;
+  }
+
+  app-dashboard .task-actions {
+    gap: 12px;
+  }
+
+  app-dashboard .task-actions button {
+    min-width: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  app-dashboard .progress-fill,
+  app-dashboard .btn-primary,
+  app-dashboard .btn-secondary,
+  app-dashboard .btn-danger,
+  app-dashboard .task-card {
+    transition: none;
+  }
 }

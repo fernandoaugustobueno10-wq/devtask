@@ -1,9 +1,12 @@
 
-<div class="dashboard-layout">
+<div
+  class="dashboard-layout"
+  [attr.inert]="exibindoFormulario() || tarefaParaExcluir() !== null ? '' : null"
+>
   <aside class="sidebar">
     <div class="sidebar-header">
       <div class="brand">
-        <span class="brand-icon">D</span>
+        <span class="brand-icon" aria-hidden="true">D</span>
         <span class="brand-name">DevTask</span>
       </div>
 
@@ -42,7 +45,6 @@
         aria-label="Encerrar sessão do DevTask"
       >
         <span aria-hidden="true">⇥</span>
-
         @if (saindo()) {
           Saindo...
         } @else {
@@ -94,7 +96,7 @@
       <article class="stat-card">
         <div class="stat-header">
           <span>Total de tarefas</span>
-          <span class="stat-icon">☷</span>
+          <span class="stat-icon" aria-hidden="true">☷</span>
         </div>
 
         <div class="stat-value">
@@ -109,7 +111,7 @@
       <article class="stat-card">
         <div class="stat-header">
           <span>Pendentes</span>
-          <span class="stat-icon">◷</span>
+          <span class="stat-icon" aria-hidden="true">◷</span>
         </div>
 
         <div class="stat-value">
@@ -124,7 +126,7 @@
       <article class="stat-card">
         <div class="stat-header">
           <span>Em andamento</span>
-          <span class="stat-icon">↗</span>
+          <span class="stat-icon" aria-hidden="true">↗</span>
         </div>
 
         <div class="stat-value">
@@ -139,7 +141,7 @@
       <article class="stat-card">
         <div class="stat-header">
           <span>Concluídas</span>
-          <span class="stat-icon">✓</span>
+          <span class="stat-icon" aria-hidden="true">✓</span>
         </div>
 
         <div class="stat-value">
