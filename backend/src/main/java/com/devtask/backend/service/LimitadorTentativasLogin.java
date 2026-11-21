@@ -152,6 +152,36 @@ public class LimitadorTentativasLogin {
         }
     }
 
+    public synchronized void cancelarReserva(
+            String enderecoIp,
+            String email,
+            UUID identificador) {
+
+        if (identificador == null) {
+            return;
+        }
+
+        String chave = construirChave(enderecoIp, email);
+
+        RegistroTentativas registro =
+                obterRegistroValido(chave, clock.instant());
+
+        if (registro == null) {
+            return;
+        }
+
+        if (!registro.reservasPendentes.remove(identificador)) {
+            return;
+        }
+
+        if (registro.reservasPendentes.isEmpty()
+                && registro.falhas == 0
+                && registro.bloqueadoAte == null) {
+
+            registros.remove(chave);
+        }
+    }
+
     public synchronized boolean reservarTentativa(
             String enderecoIp,
             String email) {

@@ -110,6 +110,14 @@ public class FiltroLimiteLogin extends OncePerRequestFilter {
                 identificador
         );
 
-        filterChain.doFilter(request, response);
+        try {
+            filterChain.doFilter(request, response);
+        } finally {
+            limitador.cancelarReserva(
+                    enderecoIp,
+                    email,
+                    identificador
+            );
+        }
     }
 }
