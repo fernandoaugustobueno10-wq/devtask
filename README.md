@@ -85,6 +85,41 @@ npm --version
 psql --version
 ```
 
+### Inicialização simplificada
+
+Após instalar os pré-requisitos e preparar o PostgreSQL, o DevTask pode ser iniciado utilizando os scripts da pasta `scripts`.
+
+**Terminal 1 — Backend Spring Boot**
+
+Na raiz do repositório:
+
+```powershell
+.\scripts\iniciar-backend.ps1
+```
+
+O script solicita a senha do PostgreSQL local e inicia o backend na porta `8080`.
+
+**Terminal 2 — Frontend Angular**
+
+Em outro PowerShell:
+
+```powershell
+.\scripts\iniciar-frontend.ps1
+```
+
+O script verifica as dependências do frontend, instala os pacotes quando necessário e inicia o Angular.
+
+**Acesse no navegador:**
+
+http://localhost:4200
+
+Os scripts utilizam, por padrão, o PostgreSQL local na porta `5433`, com banco `devtask_db` e usuário `devtask_app`. Caso utilize outra configuração, ajuste as variáveis no script de inicialização do backend.
+
+Não é necessário utilizar Docker, WSL, Railway ou Netlify.
+
+Para encerrar o sistema, pressione `Ctrl+C` em cada terminal.
+
+
 ### 2. Clonar o repositório
 
 ```powershell
