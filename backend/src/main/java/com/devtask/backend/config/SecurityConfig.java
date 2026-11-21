@@ -1,13 +1,17 @@
 
 package com.devtask.backend.config;
 
+import com.devtask.backend.service.LimitadorTentativasLogin;
+
 import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
@@ -15,7 +19,14 @@ import static org.springframework.security.config.Customizer.withDefaults;
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http)
+    public LimitadorTentativasLogin limitadorTentativasLogin() {
+        return new LimitadorTentativasLogin();
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            LimitadorTentativasLogin limitador)
             throws Exception {
 
         http
@@ -41,6 +52,11 @@ public class SecurityConfig {
                         .loginProcessingUrl("/api/auth/login")
                         .successHandler(
                                 (request, response, authentication) -> {
+                                    limitador.registrarSucesso(
+                                            request.getRemoteAddr(),
+                                            request.getParameter("username")
+                                    );
+
                                     response.setHeader(
                                             "Cache-Control",
                                             "no-store"
@@ -53,10 +69,38 @@ public class SecurityConfig {
                         )
                         .failureHandler(
                                 (request, response, exception) -> {
+                                    String enderecoIp =
+                                            request.getRemoteAddr();
+
+                                    String email =
+                                            request.getParameter("username");
+
                                     response.setHeader(
                                             "Cache-Control",
                                             "no-store"
                                     );
+
+                                    long segundosRestantes =
+                                            limitador.segundosRestantes(
+                                                    enderecoIp,
+                                                    email
+                                            );
+
+                                    if (segundosRestantes > 0) {
+                                        response.setHeader(
+                                                "Retry-After",
+                                                Long.toString(
+                                                        segundosRestantes
+                                                )
+                                        );
+
+                                        response.setStatus(
+                                                HttpStatus.TOO_MANY_REQUESTS
+                                                        .value()
+                                        );
+
+                                        return;
+                                    }
 
                                     response.setStatus(
                                             HttpServletResponse.SC_UNAUTHORIZED
@@ -83,6 +127,10 @@ public class SecurityConfig {
                                 }
                         )
                         .permitAll()
+                )
+                .addFilterBefore(
+                        new FiltroLimiteLogin(limitador),
+                        UsernamePasswordAuthenticationFilter.class
                 )
                 .csrf(withDefaults());
 
