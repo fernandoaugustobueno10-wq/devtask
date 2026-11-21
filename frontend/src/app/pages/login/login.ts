@@ -588,6 +588,32 @@ export class Login {
               return;
             }
 
+            if (erro.status === 429) {
+              const retryAfter = erro.headers.get('Retry-After');
+
+              const segundos =
+                retryAfter !== null &&
+                /^\d{1,5}$/.test(retryAfter)
+                  ? Number(retryAfter)
+                  : 0;
+
+              if (segundos > 0 && segundos <= 86400) {
+                const minutos = Math.ceil(segundos / 60);
+                const periodo =
+                  minutos === 1 ? 'minuto' : 'minutos';
+
+                this.mensagemErro.set(
+                  `Muitas tentativas de login. Aguarde aproximadamente ${minutos} ${periodo} antes de tentar novamente.`
+                );
+              } else {
+                this.mensagemErro.set(
+                  'Muitas tentativas de login. Aguarde alguns minutos antes de tentar novamente.'
+                );
+              }
+
+              return;
+            }
+
             if (erro.status === 403) {
               this.mensagemErro.set(
                 'A verificação de segurança falhou. ' +
