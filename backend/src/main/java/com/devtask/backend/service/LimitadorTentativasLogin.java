@@ -5,13 +5,17 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 
 public class LimitadorTentativasLogin {
 
     private static final int MAXIMO_TENTATIVAS = 5;
+    private static final int MAXIMO_FALHAS_POR_IP = 100;
     private static final int MAXIMO_REGISTROS = 10000;
     private static final int MAXIMO_TAMANHO_EMAIL = 254;
     private static final int MAXIMO_TAMANHO_IP = 64;
@@ -25,6 +29,9 @@ public class LimitadorTentativasLogin {
     private final Map<String, RegistroTentativas> registros =
             new HashMap<>();
 
+    private final Map<String, RegistroIp> registrosPorIp =
+            new HashMap<>();
+
     private final Clock clock;
 
     public LimitadorTentativasLogin() {
@@ -33,6 +40,116 @@ public class LimitadorTentativasLogin {
 
     LimitadorTentativasLogin(Clock clock) {
         this.clock = Objects.requireNonNull(clock);
+    }
+
+    public synchronized UUID reservarTentativaIdentificada(
+            String enderecoIp,
+            String email) {
+
+        Instant agora = clock.instant();
+        String ip = normalizarIp(enderecoIp);
+        String chave = construirChave(enderecoIp, email);
+
+        if (!permitirPorIp(ip, agora)) {
+            return null;
+        }
+
+        RegistroTentativas registro =
+                obterRegistroValido(chave, agora);
+
+        if (registro != null) {
+            if (registro.bloqueadoAte != null) {
+                return null;
+            }
+
+            if (registro.totalTentativas() >= MAXIMO_TENTATIVAS) {
+                return null;
+            }
+        } else {
+            if (!existeCapacidade(agora)) {
+                return null;
+            }
+
+            registro = new RegistroTentativas(agora);
+            registros.put(chave, registro);
+        }
+
+        UUID identificador = UUID.randomUUID();
+        registro.reservasPendentes.add(identificador);
+
+        return identificador;
+    }
+
+    public synchronized void finalizarTentativaComFalha(
+            String enderecoIp,
+            String email,
+            UUID identificador) {
+
+        if (identificador == null) {
+            return;
+        }
+
+        String chave = construirChave(enderecoIp, email);
+        Instant agora = clock.instant();
+
+        RegistroTentativas registro =
+                obterRegistroValido(chave, agora);
+
+        if (registro == null) {
+            return;
+        }
+
+        if (!registro.reservasPendentes.remove(identificador)) {
+            return;
+        }
+
+        registro.falhas++;
+
+        registrarFalhaPorIp(
+                normalizarIp(enderecoIp),
+                agora
+        );
+
+        if (registro.falhas >= MAXIMO_TENTATIVAS
+                && registro.bloqueadoAte == null) {
+
+            registro.bloqueadoAte =
+                    agora.plus(DURACAO_BLOQUEIO);
+        }
+    }
+
+    public synchronized void finalizarTentativaComSucesso(
+            String enderecoIp,
+            String email,
+            UUID identificador) {
+
+        if (identificador == null) {
+            return;
+        }
+
+        String chave = construirChave(enderecoIp, email);
+        Instant agora = clock.instant();
+
+        RegistroTentativas registro =
+                obterRegistroValido(chave, agora);
+
+        if (registro == null) {
+            return;
+        }
+
+        if (!registro.reservasPendentes.remove(identificador)) {
+            return;
+        }
+
+        if (registro.bloqueadoAte != null) {
+            return;
+        }
+
+        registro.falhas = 0;
+
+        if (registro.reservasPendentes.isEmpty()) {
+            registros.remove(chave);
+        }
     }
 
     public synchronized boolean reservarTentativa(
@@ -52,29 +169,24 @@ public class LimitadorTentativasLogin {
             String enderecoIp,
             String email) {
 
-        String chave = construirChave(enderecoIp, email);
         Instant agora = clock.instant();
+        String ip = normalizarIp(enderecoIp);
 
-        RegistroTentativas registro = registros.get(chave);
-
-        if (registro != null && estaExpirado(registro, agora)) {
-            registros.remove(chave);
-            registro = null;
+        if (!permitirPorIp(ip, agora)) {
+            return false;
         }
+
+        String chave = construirChave(enderecoIp, email);
+
+        RegistroTentativas registro =
+                obterRegistroValido(chave, agora);
 
         if (registro != null) {
-            return registro.bloqueadoAte == null;
+            return registro.bloqueadoAte == null
+                    && registro.totalTentativas() < MAXIMO_TENTATIVAS;
         }
 
-        if (registros.size() >= MAXIMO_REGISTROS) {
-            removerRegistrosExpirados(agora);
-
-            if (registros.size() >= MAXIMO_REGISTROS) {
-                return false;
-            }
-        }
-
-        return true;
+        return existeCapacidade(agora);
     }
 
     public synchronized void registrarFalha(
@@ -84,20 +196,12 @@ public class LimitadorTentativasLogin {
         String chave = construirChave(enderecoIp, email);
         Instant agora = clock.instant();
 
-        RegistroTentativas registro = registros.get(chave);
-
-        if (registro != null && estaExpirado(registro, agora)) {
-            registros.remove(chave);
-            registro = null;
-        }
+        RegistroTentativas registro =
+                obterRegistroValido(chave, agora);
 
         if (registro == null) {
-            if (registros.size() >= MAXIMO_REGISTROS) {
-                removerRegistrosExpirados(agora);
-
-                if (registros.size() >= MAXIMO_REGISTROS) {
-                    return;
-                }
+            if (!existeCapacidade(agora)) {
+                return;
             }
 
             registro = new RegistroTentativas(agora);
@@ -109,6 +213,11 @@ public class LimitadorTentativasLogin {
         }
 
         registro.falhas++;
+
+        registrarFalhaPorIp(
+                normalizarIp(enderecoIp),
+                agora
+        );
 
         if (registro.falhas >= MAXIMO_TENTATIVAS) {
             registro.bloqueadoAte =
@@ -127,29 +236,169 @@ public class LimitadorTentativasLogin {
             String enderecoIp,
             String email) {
 
+        Instant agora = clock.instant();
+        String ip = normalizarIp(enderecoIp);
+
+        long segundosPorIp =
+                segundosRestantesPorIp(ip, agora);
+
         String chave = construirChave(enderecoIp, email);
-        RegistroTentativas registro = registros.get(chave);
+
+        RegistroTentativas registro =
+                obterRegistroValido(chave, agora);
 
         if (registro == null || registro.bloqueadoAte == null) {
+            return segundosPorIp;
+        }
+
+        long segundosPorConta = calcularSegundos(
+                agora,
+                registro.bloqueadoAte
+        );
+
+        return Math.max(
+                segundosPorConta,
+                segundosPorIp
+        );
+    }
+
+    private boolean permitirPorIp(
+            String ip,
+            Instant agora) {
+
+        RegistroIp registro = registrosPorIp.get(ip);
+
+        if (registro != null && expirouRegistroIp(registro, agora)) {
+            registrosPorIp.remove(ip);
+            registro = null;
+        }
+
+        if (registro != null) {
+            return registro.falhas < MAXIMO_FALHAS_POR_IP;
+        }
+
+        if (registrosPorIp.size() >= MAXIMO_REGISTROS) {
+            removerRegistrosIpExpirados(agora);
+
+            return registrosPorIp.size() < MAXIMO_REGISTROS;
+        }
+
+        return true;
+    }
+
+    private void registrarFalhaPorIp(
+            String ip,
+            Instant agora) {
+
+        RegistroIp registro = registrosPorIp.get(ip);
+
+        if (registro != null && expirouRegistroIp(registro, agora)) {
+            registrosPorIp.remove(ip);
+            registro = null;
+        }
+
+        if (registro == null) {
+            if (registrosPorIp.size() >= MAXIMO_REGISTROS) {
+                removerRegistrosIpExpirados(agora);
+
+                if (registrosPorIp.size() >= MAXIMO_REGISTROS) {
+                    return;
+                }
+            }
+
+            registro = new RegistroIp(agora);
+            registrosPorIp.put(ip, registro);
+        }
+
+        if (registro.falhas < MAXIMO_FALHAS_POR_IP) {
+            registro.falhas++;
+        }
+    }
+
+    private long segundosRestantesPorIp(
+            String ip,
+            Instant agora) {
+
+        RegistroIp registro = registrosPorIp.get(ip);
+
+        if (registro == null) {
             return 0;
         }
 
-        Instant agora = clock.instant();
+        if (expirouRegistroIp(registro, agora)) {
+            registrosPorIp.remove(ip);
+            return 0;
+        }
 
-        if (!agora.isBefore(registro.bloqueadoAte)) {
-            registros.remove(chave);
+        if (registro.falhas < MAXIMO_FALHAS_POR_IP) {
+            return 0;
+        }
+
+        return calcularSegundos(
+                agora,
+                registro.inicioJanela.plus(JANELA_TENTATIVAS)
+        );
+    }
+
+    private boolean expirouRegistroIp(
+            RegistroIp registro,
+            Instant agora) {
+
+        return !agora.isBefore(
+                registro.inicioJanela.plus(JANELA_TENTATIVAS)
+        );
+    }
+
+    private void removerRegistrosIpExpirados(Instant agora) {
+        registrosPorIp.entrySet().removeIf(
+                entrada -> expirouRegistroIp(
+                        entrada.getValue(),
+                        agora
+                )
+        );
+    }
+
+    private long calcularSegundos(
+            Instant agora,
+            Instant termino) {
+
+        if (!agora.isBefore(termino)) {
             return 0;
         }
 
         long milissegundos = Duration.between(
                 agora,
-                registro.bloqueadoAte
+                termino
         ).toMillis();
 
         return Math.max(
-                1,
+                1L,
                 (milissegundos + 999L) / 1000L
         );
+    }
+
+    private RegistroTentativas obterRegistroValido(
+            String chave,
+            Instant agora) {
+
+        RegistroTentativas registro = registros.get(chave);
+
+        if (registro != null && estaExpirado(registro, agora)) {
+            registros.remove(chave);
+            return null;
+        }
+
+        return registro;
+    }
+
+    private boolean existeCapacidade(Instant agora) {
+        if (registros.size() < MAXIMO_REGISTROS) {
+            return true;
+        }
+
+        removerRegistrosExpirados(agora);
+
+        return registros.size() < MAXIMO_REGISTROS;
     }
 
     private boolean estaExpirado(
@@ -217,12 +466,29 @@ public class LimitadorTentativasLogin {
     private static final class RegistroTentativas {
 
         private final Instant inicioJanela;
+
+        private final Set<UUID> reservasPendentes =
+                new HashSet<>();
+
         private int falhas;
         private Instant bloqueadoAte;
 
         private RegistroTentativas(Instant inicioJanela) {
             this.inicioJanela = inicioJanela;
-            this.falhas = 0;
+        }
+
+        private int totalTentativas() {
+            return falhas + reservasPendentes.size();
+        }
+    }
+
+    private static final class RegistroIp {
+
+        private final Instant inicioJanela;
+        private int falhas;
+
+        private RegistroIp(Instant inicioJanela) {
+            this.inicioJanela = inicioJanela;
         }
     }
 }

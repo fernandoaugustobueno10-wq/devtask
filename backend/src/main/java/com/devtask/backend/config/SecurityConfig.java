@@ -3,6 +3,7 @@ package com.devtask.backend.config;
 
 import com.devtask.backend.service.LimitadorTentativasLogin;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.context.annotation.Bean;
@@ -12,6 +13,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+import java.util.UUID;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
@@ -52,9 +55,13 @@ public class SecurityConfig {
                         .loginProcessingUrl("/api/auth/login")
                         .successHandler(
                                 (request, response, authentication) -> {
-                                    limitador.registrarSucesso(
+                                    UUID identificador =
+                                            obterIdentificador(request);
+
+                                    limitador.finalizarTentativaComSucesso(
                                             request.getRemoteAddr(),
-                                            request.getParameter("username")
+                                            request.getParameter("username"),
+                                            identificador
                                     );
 
                                     response.setHeader(
@@ -74,6 +81,15 @@ public class SecurityConfig {
 
                                     String email =
                                             request.getParameter("username");
+
+                                    UUID identificador =
+                                            obterIdentificador(request);
+
+                                    limitador.finalizarTentativaComFalha(
+                                            enderecoIp,
+                                            email,
+                                            identificador
+                                    );
 
                                     response.setHeader(
                                             "Cache-Control",
@@ -135,5 +151,19 @@ public class SecurityConfig {
                 .csrf(withDefaults());
 
         return http.build();
+    }
+
+    private static UUID obterIdentificador(
+            HttpServletRequest request) {
+
+        Object atributo = request.getAttribute(
+                FiltroLimiteLogin.ATRIBUTO_RESERVA
+        );
+
+        if (atributo instanceof UUID identificador) {
+            return identificador;
+        }
+
+        return null;
     }
 }

@@ -12,8 +12,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.UUID;
 
 public class FiltroLimiteLogin extends OncePerRequestFilter {
+
+    public static final String ATRIBUTO_RESERVA =
+            FiltroLimiteLogin.class.getName() + ".reserva";
 
     private static final String CAMINHO_LOGIN =
             "/api/auth/login";
@@ -66,13 +70,13 @@ public class FiltroLimiteLogin extends OncePerRequestFilter {
         String enderecoIp = request.getRemoteAddr();
         String email = request.getParameter("username");
 
-        boolean tentativaReservada =
-                limitador.reservarTentativa(
+        UUID identificador =
+                limitador.reservarTentativaIdentificada(
                         enderecoIp,
                         email
                 );
 
-        if (!tentativaReservada) {
+        if (identificador == null) {
             long segundosRestantes =
                     limitador.segundosRestantes(
                             enderecoIp,
@@ -100,6 +104,11 @@ public class FiltroLimiteLogin extends OncePerRequestFilter {
 
             return;
         }
+
+        request.setAttribute(
+                ATRIBUTO_RESERVA,
+                identificador
+        );
 
         filterChain.doFilter(request, response);
     }
